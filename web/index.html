@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ADM 预览</title>
+  </head>
+  <body>
+    <header class="top">
+      <h1>ADM 预览</h1>
+      <p>粘贴 Bid Response 或裸 adm。监测像素会被改写，不会按原地址发出。</p>
+    </header>
+    <main class="layout">
+      <section class="panel">
+        <div class="actions">
+          <button id="fill" type="button">填入示例</button>
+          <button id="run" type="button">预览</button>
+          <button id="clear" type="button">清空</button>
+        </div>
+        <textarea id="input" placeholder="在这里粘贴 JSON 或 adm"></textarea>
+        <p id="error" class="error" hidden></p>
+      </section>
+      <section class="panel result" id="result" hidden>
+        <dl class="meta" id="meta"></dl>
+        <h2>素材</h2>
+        <div id="images" class="images"></div>
+        <h2>可见文字</h2>
+        <ul id="texts"></ul>
+        <h2>已拦截</h2>
+        <ul id="blocked"></ul>
+        <h2>画面</h2>
+        <iframe id="frame" title="广告预览" sandbox="allow-scripts"></iframe>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
