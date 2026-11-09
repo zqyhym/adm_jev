@@ -1,8 +1,10 @@
-package adm
+package preview
 
 import (
 	"strings"
 	"testing"
+
+	"adm_jev/internal/creative/model"
 )
 
 func TestStaticImage(t *testing.T) {
@@ -70,7 +72,7 @@ func TestJamppToken(t *testing.T) {
 	if got.Crid != "6868058" || got.Adomain != "autodoc.de" || got.Width != 300 || got.Height != 250 {
 		t.Fatalf("meta=%+v", got)
 	}
-	var creative *Image
+	var creative *model.Image
 	for i := range got.Images {
 		if got.Images[i].Source == "token" {
 			creative = &got.Images[i]

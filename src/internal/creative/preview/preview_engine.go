@@ -1,6 +1,4 @@
-// Package adm 把 Bid Response 或裸 adm 解析成可预览的素材。
-// 监测地址只做改写和列举，不会由服务端发起请求。
-package adm
+package preview
 
 import (
 	"encoding/json"
@@ -11,29 +9,11 @@ import (
 	"strings"
 
 	"golang.org/x/net/html"
+
+	"adm_jev/internal/creative/model"
 )
 
 const emptyURL = "/api/empty"
-
-// Image 是从片段里抽出的一张图或视频地址。
-type Image struct {
-	URL     string `json:"url"`
-	Source  string `json:"source"`
-	Tracker bool   `json:"tracker"`
-}
-
-// Result 是一次预览解析的结果。
-type Result struct {
-	Format      string   `json:"format"`
-	Width       int      `json:"width"`
-	Height      int      `json:"height"`
-	Crid        string   `json:"crid"`
-	Adomain     string   `json:"adomain"`
-	Images      []Image  `json:"images"`
-	Texts       []string `json:"texts"`
-	Blocked     []string `json:"blocked"`
-	PreviewHTML string   `json:"previewHtml"`
-}
 
 type bidMeta struct {
 	Adm     string
@@ -44,10 +24,10 @@ type bidMeta struct {
 }
 
 // Parse 接受整段 Bid Response JSON，或裸的 adm 字符串。
-func Parse(input string) (Result, error) {
+func Parse(input string) (model.Result, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
-		return Result{}, fmt.Errorf("内容为空")
+		return model.Result{}, fmt.Errorf("内容为空")
 	}
 	if strings.HasPrefix(input, "{") {
 		if meta, ok := parseBidResponse(input); ok {
@@ -86,10 +66,10 @@ func parseBidResponse(input string) (bidMeta, bool) {
 	return meta, true
 }
 
-func parseAdm(adm string, meta bidMeta) (Result, error) {
+func parseAdm(adm string, meta bidMeta) (model.Result, error) {
 	adm = strings.TrimSpace(adm)
 	if adm == "" {
-		return Result{}, fmt.Errorf("没有 adm")
+		return model.Result{}, fmt.Errorf("没有 adm")
 	}
 	adm = strings.ReplaceAll(adm, "${AUCTION_PRICE}", "AUDIT")
 	if looksVAST(adm) {
@@ -101,8 +81,8 @@ func parseAdm(adm string, meta bidMeta) (Result, error) {
 	return parseBanner(adm, meta), nil
 }
 
-func parseBanner(adm string, meta bidMeta) Result {
-	var images []Image
+func parseBanner(adm string, meta bidMeta) model.Result {
+	var images []model.Image
 	var texts []string
 	doc, err := html.Parse(strings.NewReader(adm))
 	if err == nil {
@@ -116,7 +96,7 @@ func parseBanner(adm string, meta bidMeta) Result {
 	if meta.W == 0 && meta.H == 0 {
 		meta.W, meta.H = 300, 250
 	}
-	return Result{
+	return model.Result{
 		Format:      "banner",
 		Width:       meta.W,
 		Height:      meta.H,
@@ -129,7 +109,7 @@ func parseBanner(adm string, meta bidMeta) Result {
 	}
 }
 
-func collectHTML(n *html.Node, images *[]Image, texts *[]string, meta *bidMeta) {
+func collectHTML(n *html.Node, images *[]model.Image, texts *[]string, meta *bidMeta) {
 	if n.Type == html.ElementNode && (n.Data == "script" || n.Data == "style") {
 		return
 	}
@@ -146,7 +126,7 @@ func collectHTML(n *html.Node, images *[]Image, texts *[]string, meta *bidMeta) 
 			height := attr(n, "height")
 			tracker := src != "" && isTracker(src, style, width, height)
 			if src != "" {
-				*images = append(*images, Image{
+				*images = append(*images, model.Image{
 					URL:     src,
 					Source:  "tag",
 					Tracker: tracker,
@@ -156,11 +136,11 @@ func collectHTML(n *html.Node, images *[]Image, texts *[]string, meta *bidMeta) 
 				fillSize(meta, width, height)
 			}
 			for _, srcURL := range srcsetURLs(attr(n, "srcset")) {
-				*images = append(*images, Image{URL: srcURL, Source: "srcset", Tracker: trackerURL(srcURL)})
+				*images = append(*images, model.Image{URL: srcURL, Source: "srcset", Tracker: trackerURL(srcURL)})
 			}
 		}
 		for _, srcURL := range cssURLs(attr(n, "style")) {
-			*images = append(*images, Image{URL: srcURL, Source: "background", Tracker: trackerURL(srcURL)})
+			*images = append(*images, model.Image{URL: srcURL, Source: "background", Tracker: trackerURL(srcURL)})
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -186,7 +166,7 @@ var coreImageRes = []*regexp.Regexp{
 	regexp.MustCompile(`(?s)\\"token\\"\s*:\s*\\"core_main_image\\".{0,400}?\\"value\\"\s*:\s*\\"([^"\\]+)`),
 }
 
-func collectCoreImage(adm string, images *[]Image) {
+func collectCoreImage(adm string, images *[]model.Image) {
 	for _, re := range coreImageRes {
 		m := re.FindStringSubmatch(adm)
 		if len(m) < 2 {
@@ -194,7 +174,7 @@ func collectCoreImage(adm string, images *[]Image) {
 		}
 		raw := strings.ReplaceAll(m[1], `\/`, "/")
 		unwrapped := unwrapImgsrv(raw)
-		*images = append(*images, Image{URL: unwrapped, Source: "token", Tracker: trackerURL(unwrapped)})
+		*images = append(*images, model.Image{URL: unwrapped, Source: "token", Tracker: trackerURL(unwrapped)})
 		return
 	}
 }
@@ -220,9 +200,9 @@ func unwrapImgsrv(raw string) string {
 	return raw
 }
 
-func dedupeImages(images []Image) []Image {
+func dedupeImages(images []model.Image) []model.Image {
 	index := map[string]int{}
-	var out []Image
+	var out []model.Image
 	for _, img := range images {
 		if img.URL == "" {
 			continue
@@ -239,7 +219,7 @@ func dedupeImages(images []Image) []Image {
 	return out
 }
 
-func blockedURLs(images []Image) []string {
+func blockedURLs(images []model.Image) []string {
 	var urls []string
 	seen := map[string]bool{}
 	for _, img := range images {
@@ -373,8 +353,8 @@ var (
 	adTitleRe   = regexp.MustCompile(`(?is)<AdTitle[^>]*>\s*(?:<!\[CDATA\[)?\s*([^<]*?)\s*(?:\]\]>)?\s*</AdTitle>`)
 )
 
-func parseVAST(adm string, meta bidMeta) Result {
-	var images []Image
+func parseVAST(adm string, meta bidMeta) model.Result {
+	var images []model.Image
 	var texts []string
 	if title := cleanText(firstMatch(adTitleRe, adm)); title != "" {
 		texts = append(texts, title)
@@ -384,7 +364,7 @@ func parseVAST(adm string, meta bidMeta) Result {
 			continue
 		}
 		media := strings.TrimSpace(m[1])
-		images = append(images, Image{URL: media, Source: "media", Tracker: trackerURL(media)})
+		images = append(images, model.Image{URL: media, Source: "media", Tracker: trackerURL(media)})
 	}
 	images = dedupeImages(images)
 	wrapped := vastWrapRe.FindStringSubmatch(adm)
@@ -395,7 +375,7 @@ func parseVAST(adm string, meta bidMeta) Result {
 	if meta.W == 0 && meta.H == 0 {
 		meta.W, meta.H = 300, 250
 	}
-	return Result{
+	return model.Result{
 		Format:      "vast",
 		Width:       meta.W,
 		Height:      meta.H,
@@ -408,7 +388,7 @@ func parseVAST(adm string, meta bidMeta) Result {
 	}
 }
 
-func vastBody(images []Image, texts []string) string {
+func vastBody(images []model.Image, texts []string) string {
 	var b strings.Builder
 	for _, text := range texts {
 		b.WriteString("<p>")
@@ -465,13 +445,13 @@ func isNativeJSON(raw string) bool {
 	return ok
 }
 
-func parseNative(raw string, meta bidMeta) (Result, error) {
+func parseNative(raw string, meta bidMeta) (model.Result, error) {
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-		return Result{}, fmt.Errorf("native 不是合法 JSON")
+		return model.Result{}, fmt.Errorf("native 不是合法 JSON")
 	}
 	assets := nativeAssets(payload)
-	var images []Image
+	var images []model.Image
 	var texts []string
 	for _, asset := range assets {
 		item, ok := asset.(map[string]any)
@@ -491,7 +471,7 @@ func parseNative(raw string, meta bidMeta) (Result, error) {
 		if img, ok := item["img"].(map[string]any); ok {
 			src := fmt.Sprint(img["url"])
 			if src != "" && src != "<nil>" {
-				images = append(images, Image{URL: src, Source: "native", Tracker: trackerURL(src)})
+				images = append(images, model.Image{URL: src, Source: "native", Tracker: trackerURL(src)})
 				if meta.W == 0 {
 					if w, ok := number(img["w"]); ok {
 						meta.W = w
@@ -510,7 +490,7 @@ func parseNative(raw string, meta bidMeta) (Result, error) {
 	if meta.W == 0 && meta.H == 0 {
 		meta.W, meta.H = 300, 250
 	}
-	return Result{
+	return model.Result{
 		Format:      "native",
 		Width:       meta.W,
 		Height:      meta.H,
@@ -547,7 +527,7 @@ func number(v any) (int, bool) {
 	}
 }
 
-func nativeBody(images []Image, texts []string) string {
+func nativeBody(images []model.Image, texts []string) string {
 	var b strings.Builder
 	b.WriteString(`<div style="font-family:sans-serif;padding:12px">`)
 	for _, img := range images {
