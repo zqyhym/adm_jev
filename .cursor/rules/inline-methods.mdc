@@ -1,0 +1,28 @@
+---
+description: 写函数或方法时把逻辑留在同一个方法里，不为只用一次的步骤拆私有子方法
+alwaysApply: true
+---
+
+# 逻辑写在同一个方法里
+
+写函数或方法时，把当前流程直接写在这个方法里。方法变长可以接受。不为了缩短方法，拆出只调用一次的私有子方法。
+
+只有后续值得复用时才抽出方法：
+
+- 已经有两处及以上调用，或接下来明确会复用
+- 抽出后是独立的业务单元，而不是当前流程里某一步的别名
+
+判断：删掉子方法后，调用方只少了一行调用，就把逻辑内联回去。
+
+```go
+// 一次请求里的步骤留在 Preview 里
+func (s *PreviewService) Preview(input string) (model.Result, error) {
+	normalized := strings.TrimSpace(input)
+	if normalized == "" {
+		return model.Result{}, errors.New("输入为空")
+	}
+	return preview.Parse(normalized)
+}
+```
+
+前后端都适用。

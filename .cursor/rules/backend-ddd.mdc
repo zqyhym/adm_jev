@@ -1,0 +1,33 @@
+---
+description: 后端按业务做 DDD 模块化；模块内按需放 handle、service、model、repository，或其它职责明确的包
+globs: src/**/*.go
+alwaysApply: false
+---
+
+# 后端 DDD 模块化
+
+按业务域拆模块，不按技术层拆顶层目录。新能力归入已有模块；没有对应模块时，在 `src/internal/<业务>/` 新建。路由装配留在 `src/cmd/server`，业务逻辑不写进 `main`。
+
+## 模块内包
+
+只建当前业务用得到的包，不为凑分层建空目录。
+
+- `handle`：HTTP 适配，负责路由、入参和状态码，不写业务规则
+- `service`：用例编排，是模块对外的业务入口
+- `model`：领域对象和对外数据结构
+- `repository`：持久化；没有存储就不建
+- 其它包：包名直接说明业务含义。现有例子是 `creative/preview`，负责素材预览解析
+
+依赖方向：`handle` → `service` → `model`、业务包；需要存取时由 `service` 调用 `repository`。`model` 和业务包不依赖 `handle`、`gin`。
+
+## 目录示例
+
+```
+src/internal/creative/
+  handle/      # 预览接口
+  service/     # 预览用例
+  model/       # 预览结果
+  preview/     # 素材解析，职责不属于上面三层
+```
+
+跨模块只通过对方的 `service` 或公开类型协作，不引用对方的 `handle` 和未导出实现。
