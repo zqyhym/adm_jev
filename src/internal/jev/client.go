@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"image"
 	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"os"
@@ -115,10 +116,10 @@ func NewFromEnv() *Client {
 	}
 }
 
-// ValidateImage 在发请求前拒绝非 JPEG、截断图和超限图。
+// ValidateImage 在发请求前拒绝非 JPEG/PNG、截断图和超限图。
 func ValidateImage(data []byte) error {
-	if len(data) < 3 || data[0] != 0xFF || data[1] != 0xD8 || data[2] != 0xFF {
-		return fmt.Errorf("不是 JPEG")
+	if !jpegMagic(data) && !pngMagic(data) {
+		return fmt.Errorf("不是 JPEG 或 PNG")
 	}
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
@@ -231,7 +232,7 @@ func buildPayload(model string, req Request) ([]byte, error) {
 		for _, img := range req.Images {
 			assets[img.Ref] = map[string]any{
 				"type":        "image",
-				"format":      "jpg",
+				"format":      imageFormat(img.Data),
 				"data_base64": base64.StdEncoding.EncodeToString(img.Data),
 			}
 		}
@@ -343,6 +344,21 @@ func asFloat(v any) (float64, bool) {
 	default:
 		return 0, false
 	}
+}
+
+func jpegMagic(data []byte) bool {
+	return len(data) >= 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF
+}
+
+func pngMagic(data []byte) bool {
+	return len(data) >= 8 && bytes.Equal(data[:8], []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'})
+}
+
+func imageFormat(data []byte) string {
+	if pngMagic(data) {
+		return "png"
+	}
+	return "jpg"
 }
 
 func redact(body, key string) string {

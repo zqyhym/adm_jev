@@ -54,9 +54,12 @@ func TestFetchCreativeJPEG(t *testing.T) {
 		w.Write([]byte(`{"model":"jev-1.13","answers":{"review":{"type":"noul","noul":0.5}}}`))
 	}))
 	defer hub.Close()
-	err := Submit(context.Background(), &jev.Client{BaseURL: hub.URL, Model: "jev-1.13", APIKey: "phase2-test"}, bids, files)
+	got, err := Submit(context.Background(), &jev.Client{BaseURL: hub.URL, Model: "jev-1.13", APIKey: "phase2-test"}, bids, files)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].SourceID != "seatbid[0].bid[0]#0" || got[0].Noul != 0.5 {
+		t.Fatalf("%+v", got)
 	}
 }
 
@@ -165,7 +168,7 @@ func TestSubmitSkipsWithoutImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = Submit(context.Background(), &jev.Client{BaseURL: server.URL, Model: "jev-1.13", APIKey: "phase2-test"}, bids, nil)
+	_, err = Submit(context.Background(), &jev.Client{BaseURL: server.URL, Model: "jev-1.13", APIKey: "phase2-test"}, bids, nil)
 	if err == nil || called || !strings.Contains(err.Error(), "没有可送审的主体图片") {
 		t.Fatalf("err=%v called=%v", err, called)
 	}

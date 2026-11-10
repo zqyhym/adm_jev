@@ -114,7 +114,7 @@ func TestValidateImage(t *testing.T) {
 	if err := gif.Encode(&gifBuf, image.NewRGBA(image.Rect(0, 0, 8, 8)), nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := ValidateImage(gifBuf.Bytes()); err == nil || !strings.Contains(err.Error(), "不是 JPEG") {
+	if err := ValidateImage(gifBuf.Bytes()); err == nil || !strings.Contains(err.Error(), "不是 JPEG 或 PNG") {
 		t.Fatalf("gif err=%v", err)
 	}
 }
