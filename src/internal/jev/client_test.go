@@ -19,6 +19,7 @@ import (
 	"testing"
 )
 
+// TestNewFromEnvDefaults 验证未设置环境变量时使用默认 Hub 地址和模型。
 func TestNewFromEnvDefaults(t *testing.T) {
 	t.Setenv("AIHUB_BASE_URL", "")
 	t.Setenv("AIHUB_MODEL", "")
@@ -32,6 +33,7 @@ func TestNewFromEnvDefaults(t *testing.T) {
 	}
 }
 
+// TestDecideRequestShape 验证决策请求的路径、模型、鉴权头和图片内容符合约定。
 func TestDecideRequestShape(t *testing.T) {
 	const key = "phase0-secret-key"
 	const ref = "a3f1c2e8-sample"
@@ -91,6 +93,7 @@ func TestDecideRequestShape(t *testing.T) {
 	}
 }
 
+// TestValidateImage 验证合格 JPEG 可通过，过小、超限、截断和 GIF 会被拒绝。
 func TestValidateImage(t *testing.T) {
 	if err := ValidateImage(mustJPEG(t, 320, 320)); err != nil {
 		t.Fatal(err)
@@ -116,6 +119,7 @@ func TestValidateImage(t *testing.T) {
 	}
 }
 
+// TestDecideRejectsBadImageLocally 验证超限图片在本地被拒绝，不会发起 HTTP 请求。
 func TestDecideRejectsBadImageLocally(t *testing.T) {
 	called := false
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
@@ -135,6 +139,7 @@ func TestDecideRejectsBadImageLocally(t *testing.T) {
 	}
 }
 
+// TestMissingAnswerStaysUnknown 验证响应缺少某个问题时保持 UNKNOWN，不补成未命中。
 func TestMissingAnswerStaysUnknown(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"model":"jev-1.13","answers":{"is_bug":{"type":"noul","noul":0.8}}}`))
@@ -159,6 +164,7 @@ func TestMissingAnswerStaysUnknown(t *testing.T) {
 	}
 }
 
+// TestErrorRedactsAPIKey 验证错误响应里的密钥会被脱敏。
 func TestErrorRedactsAPIKey(t *testing.T) {
 	const key = "phase0-secret-key"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

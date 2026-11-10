@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// TestLivePhase0 验证内网 Hub 的文本、单图、换图、去图、图文、图片请求头、超限图和错误密钥。
 func TestLivePhase0(t *testing.T) {
 	key := os.Getenv("AIHUB_API_KEY")
 	if key == "" {

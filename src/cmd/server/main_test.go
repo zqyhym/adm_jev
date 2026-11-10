@@ -11,6 +11,7 @@ import (
 	"testing"
 )
 
+// TestStaticHosting 验证静态目录能提供首页、资源文件，并且预览接口仍可用。
 func TestStaticHosting(t *testing.T) {
 	directory := t.TempDir()
 	if err := os.WriteFile(filepath.Join(directory, "index.html"), []byte("<html>preview workbench</html>"), 0600); err != nil {
@@ -55,6 +56,7 @@ func TestStaticHosting(t *testing.T) {
 	}
 }
 
+// TestDevelopmentProxy 验证开发模式把页面请求代理到前端服务，且不代理本服务接口。
 func TestDevelopmentProxy(t *testing.T) {
 	// A cancellable context matches real server requests without legacy CloseNotify.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -111,6 +113,7 @@ func TestDevelopmentProxy(t *testing.T) {
 	}
 }
 
+// TestInvalidProxyAddress 验证非法代理地址无法创建服务。
 func TestInvalidProxyAddress(t *testing.T) {
 	if _, err := newHTTPHandler(true, "://invalid", t.TempDir()); err == nil {
 		t.Fatal("expected invalid proxy address to fail")

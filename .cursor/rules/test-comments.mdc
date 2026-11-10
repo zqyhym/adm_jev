@@ -1,0 +1,16 @@
+---
+description: 每个测试函数上方用一行简体中文说明本用例验证的内容
+globs: "**/*_test.go"
+alwaysApply: false
+---
+
+# 测试函数注释
+
+每个 `Test` 函数上方写一行简体中文注释，说明这个用例验证什么。注释以函数名开头。
+
+新增或修改测试时补上注释。不给只被测试调用的辅助函数加这种说明。
+
+```go
+// TestExtractEmptyAdm 验证空 ADM 为 FAILED，不产生无违规结论。
+func TestExtractEmptyAdm(t *testing.T) {
+```

@@ -21,6 +21,7 @@ func testRouter() *gin.Engine {
 	return router
 }
 
+// TestPreviewResult 验证预览接口返回 Banner 尺寸、文案和预览 HTML。
 func TestPreviewResult(t *testing.T) {
 	body := `{"input":"<img src='/api/empty' width='320' height='50'><div>秋季促销</div>"}`
 	recorder := httptest.NewRecorder()
@@ -50,6 +51,7 @@ func TestPreviewResult(t *testing.T) {
 	}
 }
 
+// TestPreviewEmptyCollections 验证没有图片和文案时，列表字段返回 null。
 func TestPreviewEmptyCollections(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	testRouter().ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/preview", strings.NewReader(`{"input":"<div></div>"}`)))
@@ -64,6 +66,7 @@ func TestPreviewEmptyCollections(t *testing.T) {
 	}
 }
 
+// TestPreviewErrors 验证非法请求体和空内容返回 400 及对应错误。
 func TestPreviewErrors(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -96,6 +99,7 @@ func TestPreviewErrors(t *testing.T) {
 	}
 }
 
+// TestPreviewMethods 验证预览接口只接受 POST。
 func TestPreviewMethods(t *testing.T) {
 	router := testRouter()
 	for _, method := range []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions, http.MethodConnect, http.MethodTrace} {
@@ -109,6 +113,7 @@ func TestPreviewMethods(t *testing.T) {
 	}
 }
 
+// TestAuxiliaryResources 验证空图片和 mraid.js 可按多种方法访问。
 func TestAuxiliaryResources(t *testing.T) {
 	router := testRouter()
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions} {

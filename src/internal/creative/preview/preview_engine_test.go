@@ -7,6 +7,7 @@ import (
 	"adm_jev/internal/creative/model"
 )
 
+// TestStaticImage 验证静态 Banner 能提取图片、文案和尺寸。
 func TestStaticImage(t *testing.T) {
 	adm := `<a href="https://example.com/land"><img src="https://cdn.example/a.jpg" width="320" height="50" alt="tire"></a><div>秋季促销</div>`
 	got, err := Parse(adm)
@@ -30,6 +31,7 @@ func TestStaticImage(t *testing.T) {
 	}
 }
 
+// TestTrackingPixel 验证追踪像素会被识别，预览页不再引用原始追踪地址。
 func TestTrackingPixel(t *testing.T) {
 	adm := `<img src='https://gw.example/impression.php?a=1&amp;b=2' style='position:absolute;left:-9999px'/><img src="https://imp.example/mmp_imp/v2/xx" width="1" height="1"/>`
 	got, err := Parse(adm)
@@ -52,6 +54,7 @@ func TestTrackingPixel(t *testing.T) {
 	}
 }
 
+// TestJamppToken 验证 Jampp token 能还原主图，并保留创意标识、广告主和尺寸。
 func TestJamppToken(t *testing.T) {
 	const input = `{
   "id": "demo",
@@ -93,6 +96,7 @@ func TestJamppToken(t *testing.T) {
 	}
 }
 
+// TestNativeAndVast 验证 Native 和 VAST 包装按各自格式解析，不把包装地址当成可播放媒体。
 func TestNativeAndVast(t *testing.T) {
 	native := `{"native":{"assets":[{"title":{"text":"配件促销"}},{"img":{"url":"https://cdn.example/n.jpg","w":300,"h":250}},{"data":{"value":"立即查看"}}]}}`
 	got, err := Parse(native)
