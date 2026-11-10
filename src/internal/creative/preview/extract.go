@@ -20,6 +20,8 @@ type rawBid struct {
 	impid  string
 	nurl   string
 	burl   string
+	iurl   string
+	lurl   string
 	w      int
 	h      int
 }
@@ -57,6 +59,8 @@ func responseBids(input string) ([]rawBid, bool) {
 				ImpID   string   `json:"impid"`
 				Nurl    string   `json:"nurl"`
 				Burl    string   `json:"burl"`
+				IURL    string   `json:"iurl"`
+				LURL    string   `json:"lurl"`
 			} `json:"bid"`
 		} `json:"seatbid"`
 	}
@@ -73,6 +77,8 @@ func responseBids(input string) ([]rawBid, bool) {
 				impid: bid.ImpID,
 				nurl:  bid.Nurl,
 				burl:  bid.Burl,
+				iurl:  bid.IURL,
+				lurl:  bid.LURL,
 				w:     bid.W,
 				h:     bid.H,
 			}
@@ -132,11 +138,6 @@ func extractBid(bid rawBid) model.BidSource {
 		Assets:   []model.Asset{},
 		AdmTypes: []string{},
 	}
-	if strings.TrimSpace(bid.adm) == "" {
-		item.ParseStatus = model.ParseFailed
-		item.Failure = "ADM 为空"
-		return item
-	}
 	ex := extractor{
 		meta:    bidMeta{W: bid.w, H: bid.h},
 		index:   map[string]int{},
@@ -144,6 +145,10 @@ func extractBid(bid rawBid) model.BidSource {
 	}
 	if bid.path == "adm" {
 		ex.admPath = "adm"
+	}
+	if strings.TrimSpace(bid.adm) == "" {
+		ex.addEndpoints(bid)
+		return ex.finish(item, bid)
 	}
 	doc, err := html.Parse(strings.NewReader(bid.adm))
 	if err != nil {
@@ -165,13 +170,26 @@ func extractBid(bid rawBid) model.BidSource {
 	if strings.Contains(lower, "mraid.js") || strings.Contains(lower, "mraid.") {
 		ex.hasMraid = true
 	}
+	ex.addEndpoints(bid)
+	return ex.finish(item, bid)
+}
+
+func (ex *extractor) addEndpoints(bid rawBid) {
 	ex.add("url", bid.nurl, "creative")
 	ex.add("url", bid.burl, "creative")
-	if bid.nurl != "" {
-		ex.setField(bid.nurl, bid.path+".nurl")
-	}
-	if bid.burl != "" {
-		ex.setField(bid.burl, bid.path+".burl")
+	ex.add("url", bid.lurl, "creative")
+	ex.add("image", bid.iurl, "creative")
+	ex.setField(bid.nurl, bid.path+".nurl")
+	ex.setField(bid.burl, bid.path+".burl")
+	ex.setField(bid.lurl, bid.path+".lurl")
+	ex.setField(bid.iurl, bid.path+".iurl")
+}
+
+func (ex *extractor) finish(item model.BidSource, bid rawBid) model.BidSource {
+	if strings.TrimSpace(bid.adm) == "" && len(ex.assets) == 0 {
+		item.ParseStatus = model.ParseFailed
+		item.Failure = "ADM 为空"
+		return item
 	}
 	for i := range ex.assets {
 		ex.assets[i].SourceID = fmt.Sprintf("%s#%d", bid.path, i)

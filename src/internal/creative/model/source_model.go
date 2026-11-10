@@ -6,14 +6,16 @@ const (
 	ParseFailed  = "FAILED"
 )
 
-// Asset 是一条可追溯的素材来源。本阶段不下载，Obtained 保持 false。
+// Asset 是一条可追溯的素材来源。Obtained 只在创意图片下载并校验成功后为 true。
 type Asset struct {
-	SourceID  string `json:"sourceId"`
-	Kind      string `json:"kind"`
-	Value     string `json:"value"`
-	FieldPath string `json:"fieldPath"`
-	Role      string `json:"role"`
-	Obtained  bool   `json:"obtained"`
+	SourceID    string `json:"sourceId"`
+	Kind        string `json:"kind"`
+	Value       string `json:"value"`
+	FieldPath   string `json:"fieldPath"`
+	Role        string `json:"role"`
+	Obtained    bool   `json:"obtained"`
+	ContentHash string `json:"contentHash,omitempty"`
+	FetchError  string `json:"fetchError,omitempty"`
 }
 
 // BidSource 是一个 bid 的 Banner 素材清单。ImpSecure 为空表示没有关联到请求。

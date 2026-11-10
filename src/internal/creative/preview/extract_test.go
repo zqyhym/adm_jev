@@ -177,6 +177,45 @@ func TestExtractNoticeURL(t *testing.T) {
 	}
 }
 
+// TestExtractIURL 验证 iurl 记为未下载的创意图片，字段路径指向 iurl。
+func TestExtractIURL(t *testing.T) {
+	const input = `{"seatbid":[{"bid":[{"adm":"<div></div>","iurl":"https://cdn.example/preview.png"}]}]}`
+	got := one(t, input, "")
+	image := findAsset(t, got, "image", "https://cdn.example/preview.png")
+	if image.Role != "creative" || image.Obtained || image.FieldPath != "seatbid[0].bid[0].iurl" {
+		t.Fatalf("%+v", image)
+	}
+}
+
+// TestExtractLURL 验证 lurl 只记为通知地址，不作为图片来源。
+func TestExtractLURL(t *testing.T) {
+	const input = `{"seatbid":[{"bid":[{"adm":"<img src=\"https://cdn.example/a.jpg\" width=\"320\" height=\"50\">","lurl":"https://rtbnotify.example/loss"}]}]}`
+	got := one(t, input, "")
+	notice := findAsset(t, got, "url", "https://rtbnotify.example/loss")
+	if notice.FieldPath != "seatbid[0].bid[0].lurl" {
+		t.Fatalf("%+v", notice)
+	}
+	for _, asset := range got.Assets {
+		if asset.Kind == "image" && asset.Value == notice.Value {
+			t.Fatalf("lurl 被当成图片: %+v", asset)
+		}
+	}
+}
+
+// TestExtractLiftoffShape 验证预览图会被列出，曝光像素仍是 tracker，动态依赖保持 PARTIAL。
+func TestExtractLiftoffShape(t *testing.T) {
+	const input = `{"seatbid":[{"bid":[{"w":320,"h":480,"adm":"<img src='https://tracker.zmaticoo.com/impression.php?id=1' style='position:absolute;left:-9999px'/><script src='mraid.js'></script>","iurl":"https://cdn.liftoff-creatives.io/customers/417/previews/15c1d3a623-ios-f8f3e8804a.png"}]}]}`
+	got := one(t, input, "")
+	preview := findAsset(t, got, "image", "https://cdn.liftoff-creatives.io/customers/417/previews/15c1d3a623-ios-f8f3e8804a.png")
+	if preview.Role != "creative" || preview.Obtained || !strings.HasSuffix(preview.FieldPath, ".iurl") {
+		t.Fatalf("%+v", preview)
+	}
+	tracker := findAsset(t, got, "image", "https://tracker.zmaticoo.com/impression.php?id=1")
+	if tracker.Role != "tracker" || got.ParseStatus != model.ParsePartial {
+		t.Fatalf("tracker=%+v status=%s", tracker, got.ParseStatus)
+	}
+}
+
 func one(t *testing.T, input, request string) model.BidSource {
 	t.Helper()
 	got, err := Extract(input, request)
