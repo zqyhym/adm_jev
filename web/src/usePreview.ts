@@ -1,4 +1,5 @@
 import { onScopeDispose, readonly, ref, shallowRef } from "vue";
+import { apiErrorMessage, http } from "./api/http";
 import type { ImageAsset, PreviewResult, PreviewSnapshot } from "./types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -57,24 +58,9 @@ export function usePreview() {
     loading.value = true;
 
     try {
-      const response = await fetch("/api/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input }),
-        signal: currentController.signal,
-      });
+      const response = await http.post<unknown>("/api/preview", { input }, { signal: currentController.signal });
+      const body = response.data;
 
-      let body: unknown;
-      try {
-        body = await response.json();
-      } catch {
-        throw new Error(`预览服务未返回有效 JSON（HTTP ${response.status}），请稍后重试。`);
-      }
-
-      if (!response.ok) {
-        const message = isObject(body) && typeof body.error === "string" ? body.error.trim() : "";
-        throw new Error(message || `预览失败（HTTP ${response.status}），请检查输入或稍后重试。`);
-      }
       if (!isPreviewResult(body)) {
         throw new Error("预览服务返回的数据格式不符合约定，无法展示结果。");
       }
@@ -86,9 +72,7 @@ export function usePreview() {
       return true;
     } catch (cause) {
       if (id !== requestId || currentController.signal.aborted) return false;
-      error.value = cause instanceof TypeError
-        ? "无法连接预览服务，请检查网络或服务状态后重试。"
-        : cause instanceof Error ? cause.message : "预览失败，请稍后重试。";
+      error.value = apiErrorMessage(cause, "预览服务") || "预览失败，请稍后重试。";
       return false;
     } finally {
       if (id === requestId) {

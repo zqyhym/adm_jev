@@ -36,6 +36,7 @@ func TestStaticHosting(t *testing.T) {
 		{"/assets/app.js", http.StatusOK, "local asset"},
 		{"/missing.js", http.StatusNotFound, "404"},
 		{"/api/preview", http.StatusMethodNotAllowed, "只接受 POST"},
+		{"/api/review", http.StatusMethodNotAllowed, "只接受 POST"},
 		{"/api/preview/", http.StatusNotFound, "404"},
 		{"/api/unknown", http.StatusNotFound, "404"},
 		{"/mraid.js", http.StatusOK, "window.mraid"},

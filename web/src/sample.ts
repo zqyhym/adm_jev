@@ -11,3 +11,19 @@ export const sampleInput = `{
   }]
 }
 `;
+
+export const sampleReviewInput = `{
+  "id": "review-demo",
+  "seatbid": [{
+    "bid": [{
+      "crid": "review-demo-1",
+      "adomain": ["picsum.photos"],
+      "w": 640,
+      "h": 480,
+      "impid": "1",
+      "nurl": "https://notice.example/win",
+      "adm": "<div><img src='https://picsum.photos/id/237/640/480.jpg' width='640' height='480'/><div>Let's Get Married</div><a href='http://cdn.example/click'>Learn more</a></div>"
+    }]
+  }]
+}
+`;
