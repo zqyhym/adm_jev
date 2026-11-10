@@ -1,0 +1,64 @@
+Source: Wikimedia Commons. Downloaded: 2026-11-10. Development samples only. These files do not replace a business sign-off of the label rules.
+
+Ordinary commercial negatives remain in ad-creative-samples/ and were not copied here.
+
+gambling_lottery_ad_1902.jpg
+Role: Gambling positive
+https://commons.wikimedia.org/wiki/File:Pressens_lotteri_jan_1902.JPG
+License: public domain. 1902 Swedish newspaper advertisement for Pressens lotteri.
+Size: 478x648
+
+dating_lets_get_married_1926.jpg
+Role: Dating positive, close to the marriage-versus-dating-service boundary
+https://commons.wikimedia.org/wiki/File:Let%27s_Get_Married_(1926)_-_1.jpg
+License: public domain in the United States (published 1926). Advertisement for the film Let's Get Married.
+Size: 582x778
+Gap: no separate public-domain picture of a couple that merely appears together without promoting a matchmaking service.
+
+religion_billy_sunday_preaching.jpg
+Role: Religion Spirituality positive
+https://commons.wikimedia.org/wiki/File:Every_Muscle_in_His_Body_Preaches_in_Accord_with_His_Voice.jpg
+License: public domain in the United States. News illustration of evangelist Billy Sunday preaching.
+Size: 822x1320
+Gap: no separate public-domain picture of a church used only as scenery, without a faith appeal.
+
+violence_harvest_of_death_1863.jpg
+Role: Violence positive for visible dead. This is a battlefield photograph, not an advertisement.
+https://commons.wikimedia.org/wiki/File:Harvest_of_death,_USA_1863.jpg
+License: public domain. Timothy H. O'Sullivan / Alexander Gardner, Gettysburg, 1863.
+Size: 1400x1086
+Gap: no public-domain advertisement poster was found. No separate gun-icon or ordinary-sports boundary image was found.
+
+marijuana_hasheesh_ad_1880.png
+Role: Marijuana positive
+https://commons.wikimedia.org/wiki/File:Advertisement_for_Hasheesh_in_the_Good_Samaritan_and_Domestic_Physician_journal_1880.png
+License: public-domain historical advertisement, 1880.
+Size: 468x582
+
+marijuana_cannabis_cigarette_ad_1881.jpg
+Role: Marijuana positive
+https://commons.wikimedia.org/wiki/File:1881-01-22-sigaretti-indiani-al-cannabis-indica.jpg
+License: public-domain historical advertisement for cannabis indica cigarettes, 1881.
+Size: 831x435
+
+marijuana_medicine_bottle.jpg
+Role: Marijuana boundary. A labeled medicine bottle, not a promotional layout by itself.
+https://commons.wikimedia.org/wiki/File:Drug_bottle_containing_cannabis.jpg
+License: public domain. Cannabis indica fluid-extract bottle, label cites the 1906 Food and Drugs Act.
+Size: 284x603
+
+suggestive_moulin_rouge_poster_1891.jpg
+Role: Sexually Suggestive positive and Adult Entertainment positive. The dancers are costumed, so this is not a Nudity positive.
+https://commons.wikimedia.org/wiki/File:Lautrec_moulin_rouge,_la_goulue_(poster)_1891.jpg
+License: public domain. Henri de Toulouse-Lautrec died in 1901. The poster was published in 1891.
+Size: 738x1155
+
+profane_language_1785.txt
+Role: Profane Language text positive. Pair it with ad-creative-samples/05_kodak_print_ad_1920.jpg, which has no profanity.
+Source text: Francis Grose, A Classical Dictionary of the Vulgar Tongue, 1785. Public domain.
+
+Not downloaded, and not replaced with a file of unclear license:
+
+- Nudity positive: no historical advertisement showing the defined nudity was found in the public-domain set used here.
+- Adult Products positive: no public-domain advertisement for sexual devices was found.
+- Unsecured Request: no image. Use an http creative URL as a hit and an https notice URL as a separate notice record.

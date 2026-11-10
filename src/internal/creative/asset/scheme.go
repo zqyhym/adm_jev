@@ -66,3 +66,44 @@ func absoluteScheme(raw string) (string, bool) {
 	}
 	return strings.ToLower(parsed.Scheme), false
 }
+
+// URLVerdict 是 Unsecured Request 的规则结论。通知地址不并入该标签。
+type URLVerdict struct {
+	Status   string
+	Evidence []SchemeReport
+	Notices  []SchemeReport
+}
+
+// UnsecuredRequest 根据创意资源的协议给出 HIT、NOT_HIT 或 UNKNOWN。
+func UnsecuredRequest(bids []model.BidSource) URLVerdict {
+	verdict := URLVerdict{Status: StatusUnknown}
+	var unresolved bool
+	var creative int
+	for _, report := range Classify(bids) {
+		if report.Group == "notice" {
+			verdict.Notices = append(verdict.Notices, report)
+			continue
+		}
+		if report.Group == "unresolved" {
+			unresolved = true
+			continue
+		}
+		if report.Group != "creative" {
+			continue
+		}
+		creative++
+		if report.Unsecured {
+			verdict.Evidence = append(verdict.Evidence, report)
+		}
+	}
+	if len(verdict.Evidence) > 0 {
+		verdict.Status = StatusHit
+		return verdict
+	}
+	if unresolved || creative == 0 {
+		verdict.Status = StatusUnknown
+		return verdict
+	}
+	verdict.Status = StatusNotHit
+	return verdict
+}

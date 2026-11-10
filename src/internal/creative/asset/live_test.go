@@ -45,10 +45,8 @@ func TestLivePhase2Close(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(answers) != 1 || answers[0].SourceID != image.SourceID || answers[0].Noul < 0 || answers[0].Noul > 1 {
-			t.Fatalf("%+v", answers)
-		}
-		t.Logf("source=%s noul=%v model=%s", answers[0].SourceID, answers[0].Noul, answers[0].Model)
+		assertSourceLabels(t, answers, image.SourceID)
+		t.Logf("source=%s labels=%d", image.SourceID, len(answers))
 	})
 
 	t.Run("liftoff", func(t *testing.T) {
@@ -73,8 +71,13 @@ func TestLivePhase2Close(t *testing.T) {
 		image := imageBySuffix(t, bids[0], ".iurl")
 		if !image.Obtained {
 			answers, err := Submit(context.Background(), client, bids, files)
-			if err == nil || len(answers) != 0 {
-				t.Fatalf("未取得预览图却送审了: answers=%+v err=%v fetch=%s", answers, err, image.FetchError)
+			if err == nil {
+				t.Fatalf("未取得预览图却送审成功: %+v", answers)
+			}
+			for _, answer := range answers {
+				if answer.Status != StatusUnknown {
+					t.Fatalf("未取得图片却有判断: %+v", answer)
+				}
 			}
 			t.Logf("预览图未取得，保持不完整: %s", image.FetchError)
 			return
@@ -83,14 +86,150 @@ func TestLivePhase2Close(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(answers) != 1 || answers[0].SourceID != image.SourceID || answers[0].Noul < 0 || answers[0].Noul > 1 {
-			t.Fatalf("%+v", answers)
-		}
+		assertSourceLabels(t, answers, image.SourceID)
 		if bids[0].ParseStatus != model.ParsePartial {
 			t.Fatalf("送审后状态=%s", bids[0].ParseStatus)
 		}
-		t.Logf("source=%s noul=%v model=%s", answers[0].SourceID, answers[0].Noul, answers[0].Model)
+		t.Logf("source=%s labels=%d", image.SourceID, len(answers))
 	})
+}
+
+// TestLivePhase3Labels 用开发样本、柯达样图和 Liftoff 预览图做 11 类内网联调，并记录分数与未知状态。
+func TestLivePhase3Labels(t *testing.T) {
+	if os.Getenv("AIHUB_API_KEY") == "" {
+		t.Skip("未设置 AIHUB_API_KEY，跳过 11 类联调")
+	}
+	client := jev.NewFromEnv()
+	root := repoRoot()
+	images := []string{
+		"gambling_lottery_ad_1902.jpg",
+		"dating_lets_get_married_1926.jpg",
+		"religion_billy_sunday_preaching.jpg",
+		"violence_harvest_of_death_1863.jpg",
+		"marijuana_hasheesh_ad_1880.png",
+		"marijuana_cannabis_cigarette_ad_1881.jpg",
+		"marijuana_medicine_bottle.jpg",
+		"suggestive_moulin_rouge_poster_1891.jpg",
+	}
+	for _, name := range images {
+		t.Run(name, func(t *testing.T) {
+			logLiveLabels(t, client, name, mustRead(t, filepath.Join(root, "label-samples", name)), "")
+		})
+	}
+	t.Run("kodak_1920", func(t *testing.T) {
+		logLiveLabels(t, client, "kodak_1920", mustRead(t, filepath.Join(root, "ad-creative-samples", "05_kodak_print_ad_1920.jpg")), "")
+	})
+	t.Run("kodak_with_profane_text", func(t *testing.T) {
+		copyText := string(mustRead(t, filepath.Join(root, "label-samples", "profane_language_1785.txt")))
+		logLiveLabels(t, client, "kodak_with_profane_text", mustRead(t, filepath.Join(root, "ad-creative-samples", "05_kodak_print_ad_1920.jpg")), copyText)
+	})
+	t.Run("liftoff_iurl", func(t *testing.T) {
+		raw := mustRead(t, filepath.Join(filepath.Dir(currentFile(t)), "testdata", "liftoff_bid.json"))
+		bids, err := preview.Extract(string(raw), "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bids[0].ParseStatus != model.ParsePartial {
+			t.Fatalf("提取后状态=%s", bids[0].ParseStatus)
+		}
+		blocked := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			if !strings.Contains(r.URL.Host, "cdn.liftoff-creatives.io") {
+				return nil, fmt.Errorf("拒绝非预览图请求 %s", r.URL.Host)
+			}
+			return http.DefaultTransport.RoundTrip(r)
+		})}
+		files := Fetch(context.Background(), bids, &Fetcher{HTTP: blocked})
+		if bids[0].ParseStatus != model.ParsePartial {
+			t.Fatalf("下载后状态=%s", bids[0].ParseStatus)
+		}
+		image := imageBySuffix(t, bids[0], ".iurl")
+		if !image.Obtained {
+			t.Fatalf("预览图未取得: %s", image.FetchError)
+		}
+		labels, err := Submit(context.Background(), client, bids, files)
+		if err != nil {
+			t.Fatal(err)
+		}
+		logLabelRows(t, "liftoff_iurl", labels, image.SourceID)
+		logUnsecured(t, bids)
+		if bids[0].ParseStatus != model.ParsePartial {
+			t.Fatalf("送审后状态=%s", bids[0].ParseStatus)
+		}
+	})
+}
+
+func logLiveLabels(t *testing.T, client *jev.Client, name string, photo []byte, copyText string) {
+	t.Helper()
+	sourceID := "sample-" + name
+	assets := []model.Asset{{
+		SourceID:  sourceID,
+		Kind:      "image",
+		Role:      "creative",
+		Value:     "https://label-samples.local/" + name,
+		FieldPath: "seatbid[0].bid[0].iurl",
+		Obtained:  true,
+	}}
+	if copyText != "" {
+		assets = append(assets, model.Asset{SourceID: sourceID + "-copy", Kind: "text", Role: "creative", Value: copyText})
+	}
+	bids := []model.BidSource{{BidPath: "seatbid[0].bid[0]", ParseStatus: model.ParseOK, Assets: assets}}
+	labels, err := Submit(context.Background(), client, bids, map[string][]byte{sourceID: photo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	logLabelRows(t, name, labels, sourceID)
+	logUnsecured(t, bids)
+}
+
+func logLabelRows(t *testing.T, name string, labels []LabelResult, sourceID string) {
+	t.Helper()
+	matched := 0
+	for _, label := range labels {
+		if label.SourceID != sourceID {
+			continue
+		}
+		matched++
+		if label.Status == StatusHit || label.Status == StatusNotHit || label.Probability != nil {
+			t.Fatalf("%s %+v", name, label)
+		}
+		if label.Status == StatusScored {
+			if label.Noul == nil || *label.Noul < 0 || *label.Noul > 1 {
+				t.Fatalf("%s %+v", name, label)
+			}
+			t.Logf("%s\t%s\tSCORED\t%.2f", name, label.Label, *label.Noul)
+			continue
+		}
+		t.Logf("%s\t%s\tUNKNOWN", name, label.Label)
+	}
+	if matched != len(visualLabels) {
+		t.Fatalf("%s labels=%d", name, matched)
+	}
+}
+
+func logUnsecured(t *testing.T, bids []model.BidSource) {
+	t.Helper()
+	got := UnsecuredRequest(bids)
+	t.Logf("unsecured=%s evidence=%d notices=%d", got.Status, len(got.Evidence), len(got.Notices))
+}
+
+func assertSourceLabels(t *testing.T, answers []LabelResult, sourceID string) {
+	t.Helper()
+	matched := 0
+	for _, answer := range answers {
+		if answer.SourceID != sourceID {
+			continue
+		}
+		matched++
+		if answer.Status == StatusHit || answer.Status == StatusNotHit || answer.Probability != nil {
+			t.Fatalf("%+v", answer)
+		}
+		if answer.Status == StatusScored && (answer.Noul == nil || *answer.Noul < 0 || *answer.Noul > 1) {
+			t.Fatalf("%+v", answer)
+		}
+	}
+	if matched != len(visualLabels) {
+		t.Fatalf("labels=%d %+v", matched, answers)
+	}
 }
 
 func imageBySuffix(t *testing.T, bid model.BidSource, suffix string) model.Asset {

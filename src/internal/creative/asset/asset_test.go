@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"image"
 	"image/jpeg"
 	"io"
@@ -48,18 +49,28 @@ func TestFetchCreativeJPEG(t *testing.T) {
 	}
 	hub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		if !strings.Contains(string(body), "seatbid[0].bid[0]#0") || !strings.Contains(string(body), "秋季促销") {
+		if !strings.Contains(string(body), "seatbid[0].bid[0]#0") || !strings.Contains(string(body), "秋季促销") || !strings.Contains(string(body), "Dating") {
 			t.Errorf("body=%s", body)
 		}
-		w.Write([]byte(`{"model":"jev-1.13","answers":{"review":{"type":"noul","noul":0.5}}}`))
+		answers := map[string]any{}
+		for _, label := range visualLabels {
+			answers[label.Name] = map[string]any{"type": "noul", "noul": 0.5}
+		}
+		raw, _ := json.Marshal(map[string]any{"model": "jev-1.13", "answers": answers})
+		w.Write(raw)
 	}))
 	defer hub.Close()
 	got, err := Submit(context.Background(), &jev.Client{BaseURL: hub.URL, Model: "jev-1.13", APIKey: "phase2-test"}, bids, files)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].SourceID != "seatbid[0].bid[0]#0" || got[0].Noul != 0.5 {
+	if len(got) != len(visualLabels) {
 		t.Fatalf("%+v", got)
+	}
+	for _, item := range got {
+		if item.SourceID != "seatbid[0].bid[0]#0" || item.Status != StatusScored || item.Noul == nil || *item.Noul != 0.5 || item.Probability != nil {
+			t.Fatalf("%+v", item)
+		}
 	}
 }
 
