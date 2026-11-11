@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"adm_jev/internal/creative/model"
 	"adm_jev/internal/jev"
+	"adm_jev/internal/material/model"
 )
 
 // TestReviewsAsksTenLabels 验证已取得图片的请求包含 10 个标签、命中排除要点和 sourceId。
@@ -167,6 +167,26 @@ func TestSubmitKeepsResultsBySource(t *testing.T) {
 			want = 0.2
 		}
 		if item.Status != StatusScored || item.Noul == nil || *item.Noul != want {
+			t.Fatalf("%+v", item)
+		}
+	}
+}
+
+// TestSubmitSkipsUndersizedImage 验证已取得但低于送审尺寸的图片不调用 Hub，标签为 UNKNOWN。
+func TestSubmitSkipsUndersizedImage(t *testing.T) {
+	called := false
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	}))
+	defer server.Close()
+	photo := mustJPEG(t, 320, 50)
+	bids := []model.BidSource{{Assets: []model.Asset{{SourceID: "img-1", Kind: "image", Role: "creative", Obtained: true}}}}
+	got, err := Submit(context.Background(), &jev.Client{BaseURL: server.URL, Model: "jev-1.13", APIKey: "phase3-test"}, bids, map[string][]byte{"img-1": photo})
+	if err == nil || called || len(got) != len(visualLabels) {
+		t.Fatalf("err=%v called=%v labels=%d", err, called, len(got))
+	}
+	for _, item := range got {
+		if item.Status != StatusUnknown || item.Noul != nil || item.SourceID != "img-1" {
 			t.Fatalf("%+v", item)
 		}
 	}

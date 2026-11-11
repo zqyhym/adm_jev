@@ -12,12 +12,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"adm_jev/internal/creative/asset"
 	"adm_jev/internal/creative/service"
 	"adm_jev/internal/jev"
+	"adm_jev/internal/material/fetch"
 )
 
-func reviewRouter(t *testing.T, client *jev.Client, fetcher *asset.Fetcher) *gin.Engine {
+func reviewRouter(t *testing.T, client *jev.Client, fetcher *fetch.Fetcher) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -90,7 +90,7 @@ func TestReviewResult(t *testing.T) {
 	hub := fakeReviewHub(t)
 	defer hub.Close()
 	client := &jev.Client{BaseURL: hub.URL, Model: "fake-jev", APIKey: "test", HTTP: hub.Client()}
-	router := reviewRouter(t, client, &asset.Fetcher{AllowHost: func(string) error { return nil }})
+	router := reviewRouter(t, client, &fetch.Fetcher{AllowHost: func(string) error { return nil }})
 
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/review", strings.NewReader(reviewRequestBody(t, imageServer.URL))))
@@ -166,7 +166,7 @@ func TestReviewWithoutHubKey(t *testing.T) {
 	}))
 	defer imageServer.Close()
 	client := &jev.Client{BaseURL: "http://127.0.0.1:1", Model: "fake-jev"}
-	router := reviewRouter(t, client, &asset.Fetcher{AllowHost: func(string) error { return nil }})
+	router := reviewRouter(t, client, &fetch.Fetcher{AllowHost: func(string) error { return nil }})
 
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/review", strings.NewReader(reviewRequestBody(t, imageServer.URL))))

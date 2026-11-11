@@ -1,16 +1,16 @@
-package preview
+package parser
 
 import (
 	"strings"
 	"testing"
 
-	"adm_jev/internal/creative/model"
+	"adm_jev/internal/material/model"
 )
 
 // TestExtractStaticImage 验证静态图片、落地页和可见文案能解析为 OK，并保留尺寸与来源。
 func TestExtractStaticImage(t *testing.T) {
 	const adm = `<a href="https://example.com/land"><img src="https://cdn.example/a.jpg" width="320" height="50" alt="tire"></a><div>秋季促销</div>`
-	got := one(t, adm, "")
+	got := one(t, adm)
 	if got.BidPath != "adm" || got.ParseStatus != model.ParseOK || got.Failure != "" {
 		t.Fatalf("%+v", got)
 	}
@@ -36,7 +36,7 @@ func TestExtractStaticImage(t *testing.T) {
 // TestExtractTrackers 验证只有追踪像素时状态为 PARTIAL，且不会当成主体素材。
 func TestExtractTrackers(t *testing.T) {
 	adm := `<img src='https://gw.example/impression.php?a=1&amp;b=2' style='position:absolute;left:-9999px'/><img src="https://imp.example/mmp_imp/v2/xx" width="1" height="1"/>`
-	got := one(t, adm, "")
+	got := one(t, adm)
 	if got.ParseStatus != model.ParsePartial || got.Failure != "缺少已取得的主体素材" {
 		t.Fatalf("%+v", got)
 	}
@@ -68,7 +68,7 @@ func TestExtractJampp(t *testing.T) {
     }]
   }]
 }`
-	got := one(t, input, "")
+	got := one(t, input)
 	if got.BidPath != "seatbid[0].bid[0]" || got.Crid != "6868058" || got.Adomain != "autodoc.de" || got.W != 300 || got.H != 250 {
 		t.Fatalf("%+v", got)
 	}
@@ -97,7 +97,7 @@ func TestExtractJampp(t *testing.T) {
 // TestExtractMultipleBids 验证同一响应里的多个 bid 分开提取，图片不会串到别的 bid。
 func TestExtractMultipleBids(t *testing.T) {
 	const input = `{"seatbid":[{"bid":[{"adm":"<img src=\"https://cdn.example/a.jpg\">"},{"adm":"<img src=\"https://cdn.example/b.jpg\">"}]}]}`
-	got, err := Extract(input, "")
+	got, err := Parse(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestExtractMultipleBids(t *testing.T) {
 
 // TestExtractIframe 验证只有 Iframe 时记录地址并标为 PARTIAL，不把框架内容当成已审核素材。
 func TestExtractIframe(t *testing.T) {
-	got := one(t, `<iframe src="https://ads.example/frame.html"></iframe>`, "")
+	got := one(t, `<iframe src="https://ads.example/frame.html"></iframe>`)
 	frame := findAsset(t, got, "iframe", "https://ads.example/frame.html")
 	if frame.Role != "dynamic" || frame.Obtained || got.ParseStatus != model.ParsePartial {
 		t.Fatalf("%+v %+v", got, frame)
@@ -125,12 +125,12 @@ func TestExtractIframe(t *testing.T) {
 
 // TestExtractEmptyAdm 验证空 ADM 为 FAILED，不产生无违规结论。
 func TestExtractEmptyAdm(t *testing.T) {
-	got := one(t, "  ", "")
+	got := one(t, "  ")
 	if got.ParseStatus != model.ParseFailed || len(got.Assets) != 0 || strings.Contains(got.Failure, "无违规") {
 		t.Fatalf("%+v", got)
 	}
 	const input = `{"seatbid":[{"bid":[{"crid":"empty","adm":""},{"adm":"<img src=\"https://cdn.example/a.jpg\">"}]}]}`
-	all, err := Extract(input, "")
+	all, err := Parse(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,30 +144,25 @@ func TestExtractEmptyAdm(t *testing.T) {
 
 // TestExtractMissingSize 验证响应和标签都没有尺寸时宽高保持 0。
 func TestExtractMissingSize(t *testing.T) {
-	got := one(t, `<img src="https://cdn.example/a.jpg"><div>秋季促销</div>`, "")
+	got := one(t, `<img src="https://cdn.example/a.jpg"><div>秋季促销</div>`)
 	if got.W != 0 || got.H != 0 || got.ParseStatus != model.ParseOK {
 		t.Fatalf("%+v", got)
 	}
 }
 
-// TestExtractImpSecure 验证只有请求能按 impid 匹配时才写入 imp.secure。
-func TestExtractImpSecure(t *testing.T) {
+// TestExtractKeepsImpID 验证 Bid Response 上的 impid 会保留。
+func TestExtractKeepsImpID(t *testing.T) {
 	const input = `{"seatbid":[{"bid":[{"impid":"imp-1","adm":"<img src=\"https://cdn.example/a.jpg\" width=\"320\" height=\"50\">"}]}]}`
-	const request = `{"imp":[{"id":"imp-1","secure":1},{"id":"other","secure":0}]}`
-	got := one(t, input, request)
-	if got.ImpID != "imp-1" || got.ImpSecure == nil || !*got.ImpSecure {
+	got := one(t, input)
+	if got.ImpID != "imp-1" {
 		t.Fatalf("%+v", got)
-	}
-	missing := one(t, input, "")
-	if missing.ImpSecure != nil {
-		t.Fatalf("%+v", missing)
 	}
 }
 
 // TestExtractNoticeURL 验证 nurl 记为 URL 来源，不判断协议是否违规。
 func TestExtractNoticeURL(t *testing.T) {
 	const input = `{"seatbid":[{"bid":[{"nurl":"http://notice.example/win","adm":"<img src=\"https://cdn.example/a.jpg\" width=\"320\" height=\"50\">"}]}]}`
-	got := one(t, input, "")
+	got := one(t, input)
 	notice := findAsset(t, got, "url", "http://notice.example/win")
 	if notice.FieldPath != "seatbid[0].bid[0].nurl" || notice.Obtained {
 		t.Fatalf("%+v", notice)
@@ -180,7 +175,7 @@ func TestExtractNoticeURL(t *testing.T) {
 // TestExtractIURL 验证 iurl 记为未下载的创意图片，字段路径指向 iurl。
 func TestExtractIURL(t *testing.T) {
 	const input = `{"seatbid":[{"bid":[{"adm":"<div></div>","iurl":"https://cdn.example/preview.png"}]}]}`
-	got := one(t, input, "")
+	got := one(t, input)
 	image := findAsset(t, got, "image", "https://cdn.example/preview.png")
 	if image.Role != "creative" || image.Obtained || image.FieldPath != "seatbid[0].bid[0].iurl" {
 		t.Fatalf("%+v", image)
@@ -190,7 +185,7 @@ func TestExtractIURL(t *testing.T) {
 // TestExtractLURL 验证 lurl 只记为通知地址，不作为图片来源。
 func TestExtractLURL(t *testing.T) {
 	const input = `{"seatbid":[{"bid":[{"adm":"<img src=\"https://cdn.example/a.jpg\" width=\"320\" height=\"50\">","lurl":"https://rtbnotify.example/loss"}]}]}`
-	got := one(t, input, "")
+	got := one(t, input)
 	notice := findAsset(t, got, "url", "https://rtbnotify.example/loss")
 	if notice.FieldPath != "seatbid[0].bid[0].lurl" {
 		t.Fatalf("%+v", notice)
@@ -205,7 +200,7 @@ func TestExtractLURL(t *testing.T) {
 // TestExtractLiftoffShape 验证预览图会被列出，曝光像素仍是 tracker，动态依赖保持 PARTIAL。
 func TestExtractLiftoffShape(t *testing.T) {
 	const input = `{"seatbid":[{"bid":[{"w":320,"h":480,"adm":"<img src='https://tracker.zmaticoo.com/impression.php?id=1' style='position:absolute;left:-9999px'/><script src='mraid.js'></script>","iurl":"https://cdn.liftoff-creatives.io/customers/417/previews/15c1d3a623-ios-f8f3e8804a.png"}]}]}`
-	got := one(t, input, "")
+	got := one(t, input)
 	preview := findAsset(t, got, "image", "https://cdn.liftoff-creatives.io/customers/417/previews/15c1d3a623-ios-f8f3e8804a.png")
 	if preview.Role != "creative" || preview.Obtained || !strings.HasSuffix(preview.FieldPath, ".iurl") {
 		t.Fatalf("%+v", preview)
@@ -216,9 +211,67 @@ func TestExtractLiftoffShape(t *testing.T) {
 	}
 }
 
-func one(t *testing.T, input, request string) model.BidSource {
+// TestExtractBareImageURL 验证整段 ADM 是图片地址时记为创意图片。
+func TestExtractBareImageURL(t *testing.T) {
+	got := one(t, "https://cdn.example/a.jpg")
+	image := findAsset(t, got, "image", "https://cdn.example/a.jpg")
+	if image.Role != "creative" || got.ParseStatus != model.ParseOK || hasType(got, "HTML") {
+		t.Fatalf("%+v %+v", got, image)
+	}
+}
+
+// TestExtractStyleImage 验证样式表正文里的图片地址会被提取，样式正文不进入文案。
+func TestExtractStyleImage(t *testing.T) {
+	got := one(t, `<style>.banner{background:url("https://cdn.example/bg.jpg")}</style><div>秋季促销</div>`)
+	image := findAsset(t, got, "image", "https://cdn.example/bg.jpg")
+	if image.Role != "creative" || got.ParseStatus != model.ParseOK {
+		t.Fatalf("%+v %+v", got, image)
+	}
+	for _, asset := range got.Assets {
+		if asset.Kind == "text" && strings.Contains(asset.Value, "background") {
+			t.Fatalf("%+v", asset)
+		}
+	}
+}
+
+// TestExtractStylesheetLink 验证外链样式表只登记为动态地址，不当作图片。
+func TestExtractStylesheetLink(t *testing.T) {
+	got := one(t, `<link rel="stylesheet" href="https://cdn.example/a.css"><img src="https://cdn.example/a.jpg">`)
+	link := findAsset(t, got, "url", "https://cdn.example/a.css")
+	if link.Role != "dynamic" {
+		t.Fatalf("%+v", link)
+	}
+	for _, asset := range got.Assets {
+		if asset.Kind == "image" && asset.Value == link.Value {
+			t.Fatalf("%+v", asset)
+		}
+	}
+}
+
+// TestParseVideoUnsupported 验证 VAST 返回未实现状态，不按 Banner 解析。
+func TestParseVideoUnsupported(t *testing.T) {
+	got := one(t, `<VAST version="3.0"><Ad><InLine><AdTitle>促销</AdTitle></InLine></Ad></VAST>`)
+	if got.ParseStatus != model.ParseUnsupported || got.Failure != "video 素材提取尚未实现" || len(got.Assets) != 0 {
+		t.Fatalf("%+v", got)
+	}
+}
+
+// TestParseNativeUnsupported 验证 Native JSON 返回未实现状态。
+func TestParseNativeUnsupported(t *testing.T) {
+	got := one(t, `{"native":{"assets":[{"title":{"text":"配件促销"}}]}}`)
+	if got.ParseStatus != model.ParseUnsupported || got.Failure != "native 素材提取尚未实现" || len(got.Assets) != 0 {
+		t.Fatalf("%+v", got)
+	}
+	const input = `{"seatbid":[{"bid":[{"crid":"n-1","adm":"{\"assets\":[{\"img\":{\"url\":\"https://cdn.example/n.jpg\"}}]}"}]}]}`
+	wrapped := one(t, input)
+	if wrapped.Crid != "n-1" || wrapped.ParseStatus != model.ParseUnsupported || len(wrapped.Assets) != 0 {
+		t.Fatalf("%+v", wrapped)
+	}
+}
+
+func one(t *testing.T, input string) model.BidSource {
 	t.Helper()
-	got, err := Extract(input, request)
+	got, err := Parse(input)
 	if err != nil {
 		t.Fatal(err)
 	}

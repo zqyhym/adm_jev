@@ -8,14 +8,15 @@ import (
 
 	"adm_jev/internal/creative/asset"
 	"adm_jev/internal/creative/model"
-	"adm_jev/internal/creative/preview"
 	"adm_jev/internal/jev"
+	"adm_jev/internal/material/fetch"
+	"adm_jev/internal/material/service"
 )
 
 // ReviewService 编排素材抽取、下载、协议规则和 JEV 标签审核。
 type ReviewService struct {
 	Client  *jev.Client
-	Fetcher *asset.Fetcher
+	Fetcher *fetch.Fetcher
 }
 
 // Review 返回当前内容可观察的审核结果。下载或模型失败只写入 ReviewError，不丢弃已取得的结果。
@@ -27,10 +28,11 @@ func (s *ReviewService) Review(ctx context.Context, input string) (model.ReviewR
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
-	bids, err := preview.Extract(input, "")
+	acquired, err := service.Acquire(ctx, input, s.Fetcher)
 	if err != nil {
 		return model.ReviewResult{}, err
 	}
+	bids := acquired.Bids
 	if len(bids) == 0 {
 		return model.ReviewResult{}, errors.New("没有可审核的 bid")
 	}
@@ -52,7 +54,7 @@ func (s *ReviewService) Review(ctx context.Context, input string) (model.ReviewR
 		unsecured.Notices = append(unsecured.Notices, urlReport(report))
 	}
 
-	files := asset.Fetch(ctx, bids, s.Fetcher)
+	files := acquired.Files
 	client := s.Client
 	if client == nil {
 		client = &jev.Client{}

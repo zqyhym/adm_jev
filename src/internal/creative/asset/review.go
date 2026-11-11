@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"adm_jev/internal/creative/model"
 	"adm_jev/internal/jev"
+	"adm_jev/internal/material/model"
 )
 
 // Reviews 为每张已取得的主体图片组装一条决策请求。没有可送审图片时返回空。
@@ -22,7 +22,7 @@ func Reviews(bids []model.BidSource, files map[string][]byte) []jev.Request {
 		}
 		for _, asset := range bid.Assets {
 			data := files[asset.SourceID]
-			if asset.Kind != "image" || asset.Role != "creative" || !asset.Obtained || len(data) == 0 {
+			if asset.Kind != "image" || asset.Role != "creative" || !asset.Obtained || len(data) == 0 || jev.ValidateImage(data) != nil {
 				continue
 			}
 			ref := "asset-" + strings.NewReplacer("[", "", "]", "", "#", "-").Replace(asset.SourceID)
@@ -87,10 +87,25 @@ var visualLabels = []visualLabel{
 // Submit 在有主体图片时调用 Hub，并按来源返回 10 类标签。没有可送审图片时不发起请求，标签为 UNKNOWN。
 func Submit(ctx context.Context, client *jev.Client, bids []model.BidSource, files map[string][]byte) ([]LabelResult, error) {
 	requests := Reviews(bids, files)
-	if len(requests) == 0 {
-		return unknownForUnsent(bids), fmt.Errorf("没有可送审的主体图片")
+	sent := map[string]bool{}
+	for _, request := range requests {
+		sourceID, _ := request.State.(map[string]any)["sourceId"].(string)
+		sent[sourceID] = true
 	}
 	var labels []LabelResult
+	for _, bid := range bids {
+		for _, asset := range bid.Assets {
+			if asset.Kind == "image" && asset.Role == "creative" && asset.Obtained && !sent[asset.SourceID] {
+				labels = append(labels, unknownLabels(asset.SourceID)...)
+			}
+		}
+	}
+	if len(requests) == 0 {
+		if len(labels) == 0 {
+			labels = unknownForUnsent(bids)
+		}
+		return labels, fmt.Errorf("没有可送审的主体图片")
+	}
 	for _, request := range requests {
 		sourceID, _ := request.State.(map[string]any)["sourceId"].(string)
 		result, err := client.Decide(ctx, request)

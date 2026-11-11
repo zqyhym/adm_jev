@@ -1,4 +1,4 @@
-package asset
+package fetch
 
 import (
 	"bytes"
@@ -16,14 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"adm_jev/internal/creative/model"
+	"adm_jev/internal/material/model"
 )
 
-const (
-	minImageSide = 280
-	maxImageSide = 1568
-	maxBodyBytes = 8 << 20
-)
+const maxBodyBytes = 8 << 20
 
 // Fetcher 下载创意图片。AllowHost 为空时拒绝本机、私网和元数据地址。
 type Fetcher struct {
@@ -150,12 +146,8 @@ func usableImage(data []byte) error {
 	if !jpegMagic(data) && !pngMagic(data) {
 		return fmt.Errorf("不是 JPEG 或 PNG")
 	}
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil {
+	if _, _, err := image.DecodeConfig(bytes.NewReader(data)); err != nil {
 		return fmt.Errorf("图片损坏或截断")
-	}
-	if cfg.Width < minImageSide || cfg.Height < minImageSide || cfg.Width > maxImageSide || cfg.Height > maxImageSide {
-		return fmt.Errorf("图片尺寸 %dx%d 超出 %d 到 %d", cfg.Width, cfg.Height, minImageSide, maxImageSide)
 	}
 	return nil
 }

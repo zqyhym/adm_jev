@@ -1,13 +1,15 @@
 package model
 
+import "adm_jev/internal/material/model"
+
 // ReviewResult 是一次素材审核的可观察结果。
 type ReviewResult struct {
-	Bids        []BidSource      `json:"bids"`
-	URLs        []URLReport      `json:"urls"`
-	Unsecured   UnsecuredVerdict `json:"unsecured"`
-	Labels      []LabelReview    `json:"labels"`
-	Model       string           `json:"model"`
-	ReviewError string           `json:"reviewError"`
+	Bids        []model.BidSource `json:"bids"`
+	URLs        []URLReport       `json:"urls"`
+	Unsecured   UnsecuredVerdict  `json:"unsecured"`
+	Labels      []LabelReview     `json:"labels"`
+	Model       string            `json:"model"`
+	ReviewError string            `json:"reviewError"`
 }
 
 // URLReport 是一条来源地址的协议分组。

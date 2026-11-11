@@ -12,10 +12,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"adm_jev/internal/creative/asset"
 	"adm_jev/internal/creative/handle"
 	"adm_jev/internal/creative/service"
 	"adm_jev/internal/jev"
+	"adm_jev/internal/material/fetch"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func newHTTPHandler(dev bool, viteAddress, staticDirectory string) (http.Handler
 		return nil, err
 	}
 	handle.RegisterRoutes(router, &service.PreviewService{})
-	handle.RegisterReviewRoutes(router, &service.ReviewService{Client: jev.NewFromEnv(), Fetcher: &asset.Fetcher{}})
+	handle.RegisterReviewRoutes(router, &service.ReviewService{Client: jev.NewFromEnv(), Fetcher: &fetch.Fetcher{}})
 
 	var pages http.Handler = http.FileServer(http.Dir(staticDirectory))
 	if dev {

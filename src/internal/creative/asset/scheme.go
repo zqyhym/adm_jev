@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"adm_jev/internal/creative/model"
+	"adm_jev/internal/material/model"
 )
 
 // SchemeReport 是一条 URL 的协议分组。通知地址即使使用 HTTP 也不进入 Unsecured。

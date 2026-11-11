@@ -13,9 +13,10 @@ import (
 	"strings"
 	"testing"
 
-	"adm_jev/internal/creative/model"
-	"adm_jev/internal/creative/preview"
 	"adm_jev/internal/jev"
+	"adm_jev/internal/material/fetch"
+	"adm_jev/internal/material/model"
+	"adm_jev/internal/material/parser"
 )
 
 // TestLivePhase2Close 验证静态图和 Liftoff 预览图经下载后送入 Hub，判断能回到 sourceId。
@@ -31,11 +32,11 @@ func TestLivePhase2Close(t *testing.T) {
 			w.Write(photo)
 		}))
 		defer server.Close()
-		bids, err := preview.Extract(`{"seatbid":[{"bid":[{"crid":"kodak-1920","adm":"<div>Kodak</div>","iurl":"`+server.URL+`/preview.jpg"}]}]}`, "")
+		bids, err := parser.Parse(`{"seatbid":[{"bid":[{"crid":"kodak-1920","adm":"<div>Kodak</div>","iurl":"` + server.URL + `/preview.jpg"}]}]}`)
 		if err != nil {
 			t.Fatal(err)
 		}
-		files := Fetch(context.Background(), bids, &Fetcher{AllowHost: allowAll})
+		files := fetch.Fetch(context.Background(), bids, &fetch.Fetcher{AllowHost: allowAll})
 		image := imageBySuffix(t, bids[0], ".iurl")
 		sum := sha256.Sum256(photo)
 		if !image.Obtained || image.ContentHash != hex.EncodeToString(sum[:]) || string(files[image.SourceID]) != string(photo) {
@@ -51,7 +52,7 @@ func TestLivePhase2Close(t *testing.T) {
 
 	t.Run("liftoff", func(t *testing.T) {
 		raw := mustRead(t, filepath.Join(filepath.Dir(currentFile(t)), "testdata", "liftoff_bid.json"))
-		bids, err := preview.Extract(string(raw), "")
+		bids, err := parser.Parse(string(raw))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -64,7 +65,7 @@ func TestLivePhase2Close(t *testing.T) {
 			}
 			return http.DefaultTransport.RoundTrip(r)
 		})}
-		files := Fetch(context.Background(), bids, &Fetcher{HTTP: blocked})
+		files := fetch.Fetch(context.Background(), bids, &fetch.Fetcher{HTTP: blocked})
 		if bids[0].ParseStatus != model.ParsePartial {
 			t.Fatalf("下载后状态=%s，不能因为预览图而变成完整", bids[0].ParseStatus)
 		}
@@ -125,7 +126,7 @@ func TestLivePhase3Labels(t *testing.T) {
 	})
 	t.Run("liftoff_iurl", func(t *testing.T) {
 		raw := mustRead(t, filepath.Join(filepath.Dir(currentFile(t)), "testdata", "liftoff_bid.json"))
-		bids, err := preview.Extract(string(raw), "")
+		bids, err := parser.Parse(string(raw))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -138,7 +139,7 @@ func TestLivePhase3Labels(t *testing.T) {
 			}
 			return http.DefaultTransport.RoundTrip(r)
 		})}
-		files := Fetch(context.Background(), bids, &Fetcher{HTTP: blocked})
+		files := fetch.Fetch(context.Background(), bids, &fetch.Fetcher{HTTP: blocked})
 		if bids[0].ParseStatus != model.ParsePartial {
 			t.Fatalf("下载后状态=%s", bids[0].ParseStatus)
 		}

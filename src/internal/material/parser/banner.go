@@ -1,123 +1,20 @@
-package preview
+package parser
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
 
-	"adm_jev/internal/creative/model"
+	"adm_jev/internal/material/model"
 )
 
-type rawBid struct {
-	path   string
-	adm    string
-	crid   string
-	domain string
-	impid  string
-	nurl   string
-	burl   string
-	iurl   string
-	lurl   string
-	w      int
-	h      int
-}
-
-// Extract 从 Bid Response 或裸 ADM 提取每个 bid 的素材来源。
-// request 是可选的原始 Bid Request，只用于按 impid 关联 imp.secure。
-func Extract(input, request string) ([]model.BidSource, error) {
-	input = strings.TrimSpace(input)
-	secure := secureByImp(request)
-	if bids, ok := responseBids(input); ok {
-		out := make([]model.BidSource, 0, len(bids))
-		for _, bid := range bids {
-			item := extractBid(bid)
-			if bid.impid != "" {
-				if value, found := secure[bid.impid]; found {
-					item.ImpSecure = value
-				}
-			}
-			out = append(out, item)
-		}
-		return out, nil
-	}
-	return []model.BidSource{extractBid(rawBid{path: "adm", adm: input})}, nil
-}
-
-func responseBids(input string) ([]rawBid, bool) {
-	var resp struct {
-		Seatbid []struct {
-			Bid []struct {
-				Adm     string   `json:"adm"`
-				Crid    string   `json:"crid"`
-				Adomain []string `json:"adomain"`
-				W       int      `json:"w"`
-				H       int      `json:"h"`
-				ImpID   string   `json:"impid"`
-				Nurl    string   `json:"nurl"`
-				Burl    string   `json:"burl"`
-				IURL    string   `json:"iurl"`
-				LURL    string   `json:"lurl"`
-			} `json:"bid"`
-		} `json:"seatbid"`
-	}
-	if err := json.Unmarshal([]byte(input), &resp); err != nil || resp.Seatbid == nil {
-		return nil, false
-	}
-	var bids []rawBid
-	for seatIndex, seat := range resp.Seatbid {
-		for bidIndex, bid := range seat.Bid {
-			item := rawBid{
-				path:  fmt.Sprintf("seatbid[%d].bid[%d]", seatIndex, bidIndex),
-				adm:   bid.Adm,
-				crid:  bid.Crid,
-				impid: bid.ImpID,
-				nurl:  bid.Nurl,
-				burl:  bid.Burl,
-				iurl:  bid.IURL,
-				lurl:  bid.LURL,
-				w:     bid.W,
-				h:     bid.H,
-			}
-			if len(bid.Adomain) > 0 {
-				item.domain = bid.Adomain[0]
-			}
-			bids = append(bids, item)
-		}
-	}
-	return bids, true
-}
-
-func secureByImp(request string) map[string]*bool {
-	request = strings.TrimSpace(request)
-	if request == "" {
-		return nil
-	}
-	var body struct {
-		Imp []struct {
-			ID     string `json:"id"`
-			Secure *int   `json:"secure"`
-		} `json:"imp"`
-	}
-	if json.Unmarshal([]byte(request), &body) != nil {
-		return nil
-	}
-	out := map[string]*bool{}
-	for _, imp := range body.Imp {
-		if imp.ID == "" || imp.Secure == nil {
-			continue
-		}
-		value := *imp.Secure == 1
-		out[imp.ID] = &value
-	}
-	return out
-}
-
 type extractor struct {
-	meta      bidMeta
+	w         int
+	h         int
 	assets    []model.Asset
 	index     map[string]int
 	admPath   string
@@ -126,27 +23,28 @@ type extractor struct {
 	hasMraid  bool
 }
 
-func extractBid(bid rawBid) model.BidSource {
-	item := model.BidSource{
-		BidPath:  bid.path,
-		Crid:     bid.crid,
-		Adomain:  bid.domain,
-		W:        bid.w,
-		H:        bid.h,
-		ImpID:    bid.impid,
-		AdmHash:  hashAdm(bid.adm),
-		Assets:   []model.Asset{},
-		AdmTypes: []string{},
-	}
+func extractBanner(bid rawBid) model.BidSource {
+	item := bidShell(bid)
 	ex := extractor{
-		meta:    bidMeta{W: bid.w, H: bid.h},
+		w:       bid.w,
+		h:       bid.h,
 		index:   map[string]int{},
 		admPath: bid.path + ".adm",
 	}
 	if bid.path == "adm" {
 		ex.admPath = "adm"
 	}
-	if strings.TrimSpace(bid.adm) == "" {
+	adm := strings.TrimSpace(bid.adm)
+	if adm == "" {
+		ex.addEndpoints(bid)
+		return ex.finish(item, bid)
+	}
+	if imageURL, ok := bareImageURL(adm); ok {
+		role := "creative"
+		if trackerURL(imageURL) {
+			role = "tracker"
+		}
+		ex.add("image", imageURL, role)
 		ex.addEndpoints(bid)
 		return ex.finish(item, bid)
 	}
@@ -157,14 +55,12 @@ func extractBid(bid rawBid) model.BidSource {
 		return item
 	}
 	ex.walk(doc)
-	var tokenImages []model.Image
-	collectCoreImage(bid.adm, &tokenImages)
-	for _, image := range tokenImages {
+	if raw, ok := coreImage(bid.adm); ok {
 		role := "creative"
-		if image.Tracker {
+		if trackerURL(raw) {
 			role = "tracker"
 		}
-		ex.add("image", image.URL, role)
+		ex.add("image", raw, role)
 	}
 	lower := strings.ToLower(bid.adm)
 	if strings.Contains(lower, "mraid.js") || strings.Contains(lower, "mraid.") {
@@ -172,6 +68,17 @@ func extractBid(bid rawBid) model.BidSource {
 	}
 	ex.addEndpoints(bid)
 	return ex.finish(item, bid)
+}
+
+func bareImageURL(adm string) (string, bool) {
+	if strings.Contains(adm, "<") || strings.ContainsAny(adm, " \t\r\n") {
+		return "", false
+	}
+	parsed, err := url.Parse(adm)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return "", false
+	}
+	return adm, true
 }
 
 func (ex *extractor) addEndpoints(bid rawBid) {
@@ -194,8 +101,8 @@ func (ex *extractor) finish(item model.BidSource, bid rawBid) model.BidSource {
 	for i := range ex.assets {
 		ex.assets[i].SourceID = fmt.Sprintf("%s#%d", bid.path, i)
 	}
-	item.W = ex.meta.W
-	item.H = ex.meta.H
+	item.W = ex.w
+	item.H = ex.h
 	item.Assets = ex.assets
 	item.AdmTypes = ex.types(bid.adm)
 	item.ParseStatus, item.Failure = ex.status()
@@ -216,6 +123,24 @@ func (ex *extractor) walk(n *html.Node) {
 			ex.add("script", attr(n, "src"), "dynamic")
 			return
 		case "style":
+			var css strings.Builder
+			var write func(*html.Node)
+			write = func(node *html.Node) {
+				if node.Type == html.TextNode {
+					css.WriteString(node.Data)
+				}
+				for child := node.FirstChild; child != nil; child = child.NextSibling {
+					write(child)
+				}
+			}
+			write(n)
+			for _, srcURL := range cssURLs(css.String()) {
+				if trackerURL(srcURL) {
+					ex.add("image", srcURL, "tracker")
+				} else {
+					ex.add("image", srcURL, "creative")
+				}
+			}
 			return
 		case "iframe":
 			ex.hasIframe = true
@@ -230,7 +155,7 @@ func (ex *extractor) walk(n *html.Node) {
 				ex.add("image", src, "tracker")
 			} else {
 				ex.add("image", src, "creative")
-				fillSize(&ex.meta, width, height)
+				ex.fillSize(width, height)
 			}
 			for _, srcURL := range srcsetURLs(attr(n, "srcset")) {
 				if tracker || trackerURL(srcURL) {
@@ -241,6 +166,13 @@ func (ex *extractor) walk(n *html.Node) {
 			}
 		case "a":
 			ex.add("url", attr(n, "href"), "creative")
+		case "link":
+			for _, part := range strings.Fields(strings.ToLower(attr(n, "rel"))) {
+				if part == "stylesheet" {
+					ex.add("url", attr(n, "href"), "dynamic")
+					break
+				}
+			}
 		}
 		for _, srcURL := range cssURLs(attr(n, "style")) {
 			if trackerURL(srcURL) {
@@ -330,7 +262,120 @@ func (ex *extractor) status() (string, string) {
 	return model.ParseOK, ""
 }
 
-func hashAdm(adm string) string {
-	sum := sha256.Sum256([]byte(adm))
-	return hex.EncodeToString(sum[:])
+func (ex *extractor) fillSize(width, height string) {
+	if ex.w == 0 {
+		if w, err := strconv.Atoi(strings.TrimSuffix(width, "px")); err == nil && w > 1 {
+			ex.w = w
+		}
+	}
+	if ex.h == 0 {
+		if h, err := strconv.Atoi(strings.TrimSuffix(height, "px")); err == nil && h > 1 {
+			ex.h = h
+		}
+	}
+}
+
+var coreImageRes = []*regexp.Regexp{
+	regexp.MustCompile(`(?s)"token"\s*:\s*"core_main_image".{0,400}?"value"\s*:\s*"([^"]+)"`),
+	regexp.MustCompile(`(?s)\\"token\\"\s*:\s*\\"core_main_image\\".{0,400}?\\"value\\"\s*:\s*\\"([^"\\]+)`),
+}
+
+func coreImage(adm string) (string, bool) {
+	for _, re := range coreImageRes {
+		m := re.FindStringSubmatch(adm)
+		if len(m) < 2 {
+			continue
+		}
+		raw := strings.ReplaceAll(m[1], `\/`, "/")
+		pos := strings.Index(raw, "/imgsrv/")
+		if pos < 0 {
+			return raw, true
+		}
+		rest := raw[pos:]
+		for _, marker := range []string{"https%3A", "http%3A", "https://", "http://"} {
+			i := strings.Index(rest, marker)
+			if i <= 0 {
+				continue
+			}
+			embedded := rest[i:]
+			if dec, err := url.PathUnescape(embedded); err == nil && dec != "" {
+				return dec, true
+			}
+			return embedded, true
+		}
+		return raw, true
+	}
+	return "", false
+}
+
+func isTracker(rawURL, style, width, height string) bool {
+	if trackerURL(rawURL) {
+		return true
+	}
+	compact := strings.ToLower(strings.ReplaceAll(style, " ", ""))
+	if strings.Contains(compact, "left:-9999px") {
+		return true
+	}
+	return tiny(width) && tiny(height) && width != "" && height != ""
+}
+
+func tiny(v string) bool {
+	v = strings.TrimSpace(strings.TrimSuffix(strings.ToLower(v), "px"))
+	return v == "0" || v == "1"
+}
+
+func trackerURL(raw string) bool {
+	u := strings.ToLower(raw)
+	for _, part := range []string{"impression.php", "burl.php", "click.php", "simp.png", "mmp_imp"} {
+		if strings.Contains(u, part) {
+			return true
+		}
+	}
+	return false
+}
+
+func srcsetURLs(srcset string) []string {
+	var urls []string
+	for _, part := range strings.Split(srcset, ",") {
+		fields := strings.Fields(strings.TrimSpace(part))
+		if len(fields) == 0 {
+			continue
+		}
+		if strings.HasPrefix(fields[0], "http://") || strings.HasPrefix(fields[0], "https://") {
+			urls = append(urls, fields[0])
+		}
+	}
+	return urls
+}
+
+var cssURLRe = regexp.MustCompile(`(?i)url\(\s*['"]?(https?://[^)'"]+)`)
+
+func cssURLs(style string) []string {
+	var urls []string
+	for _, m := range cssURLRe.FindAllStringSubmatch(style, -1) {
+		if len(m) > 1 {
+			urls = append(urls, m[1])
+		}
+	}
+	return urls
+}
+
+func attr(n *html.Node, key string) string {
+	for _, a := range n.Attr {
+		if strings.EqualFold(a.Key, key) {
+			return a.Val
+		}
+	}
+	return ""
+}
+
+func cleanText(s string) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if s == "" || strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") {
+		return ""
+	}
+	if len(s) > 200 {
+		s = s[:200]
+	}
+	return s
 }
