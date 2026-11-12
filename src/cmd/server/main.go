@@ -16,8 +16,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"adm_jev/internal/creative/handle"
+	"adm_jev/internal/creative/repository"
 	"adm_jev/internal/creative/service"
 	"adm_jev/internal/jev"
 	"adm_jev/internal/material/fetch"
@@ -61,7 +63,7 @@ func run() error {
 	}()
 	log.Printf("MongoDB 已连接: %s", database.Name())
 
-	router, err := newHTTPHandler(*dev, *vite, staticDirectory)
+	router, err := newHTTPHandler(*dev, *vite, staticDirectory, database)
 	if err != nil {
 		return err
 	}
@@ -89,7 +91,7 @@ func run() error {
 	return server.Shutdown(shutdownCtx)
 }
 
-func newHTTPHandler(dev bool, viteAddress, staticDirectory string) (http.Handler, error) {
+func newHTTPHandler(dev bool, viteAddress, staticDirectory string, database *mongo.Database) (http.Handler, error) {
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 	router.RedirectTrailingSlash = false
@@ -99,7 +101,18 @@ func newHTTPHandler(dev bool, viteAddress, staticDirectory string) (http.Handler
 		return nil, err
 	}
 	handle.RegisterRoutes(router, &service.PreviewService{})
-	handle.RegisterReviewRoutes(router, &service.ReviewService{Client: jev.NewFromEnv(), Fetcher: &fetch.Fetcher{}})
+	reviewService := &service.ReviewService{Client: jev.NewFromEnv(), Fetcher: &fetch.Fetcher{}}
+	if database != nil {
+		records := repository.NewReviewRepository(database)
+		indexCtx, indexCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		indexErr := records.EnsureIndexes(indexCtx)
+		indexCancel()
+		if indexErr != nil {
+			return nil, indexErr
+		}
+		reviewService.Records = records
+	}
+	handle.RegisterReviewRoutes(router, reviewService)
 
 	var pages http.Handler = http.FileServer(http.Dir(staticDirectory))
 	if dev {

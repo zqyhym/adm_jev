@@ -2,16 +2,20 @@ package handle
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"adm_jev/internal/creative/model"
 	"adm_jev/internal/creative/service"
 	"adm_jev/internal/jev"
 	"adm_jev/internal/material/fetch"
@@ -19,11 +23,52 @@ import (
 
 func reviewRouter(t *testing.T, client *jev.Client, fetcher *fetch.Fetcher) *gin.Engine {
 	t.Helper()
+	return reviewRouterWithStore(t, client, fetcher, nil)
+}
+
+func reviewRouterWithStore(t *testing.T, client *jev.Client, fetcher *fetch.Fetcher, records service.ReviewStore) *gin.Engine {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.HandleMethodNotAllowed = true
-	RegisterReviewRoutes(router, &service.ReviewService{Client: client, Fetcher: fetcher})
+	RegisterReviewRoutes(router, &service.ReviewService{Client: client, Fetcher: fetcher, Records: records})
 	return router
+}
+
+type memoryReviewStore struct {
+	records []model.ReviewRecord
+	queries []model.ReviewReportQuery
+}
+
+func (s *memoryReviewStore) Save(_ context.Context, record model.ReviewRecord) (string, error) {
+	s.records = append(s.records, record)
+	return fmt.Sprintf("rec-%d", len(s.records)), nil
+}
+
+func (s *memoryReviewStore) List(_ context.Context, query model.ReviewReportQuery) (model.ReviewReport, error) {
+	s.queries = append(s.queries, query)
+	return model.ReviewReport{
+		Labels:   []model.ReviewLabelCount{},
+		Records:  []model.ReviewRecord{},
+		Page:     query.Page,
+		PageSize: query.PageSize,
+	}, nil
+}
+
+func (s *memoryReviewStore) Get(_ context.Context, id string) (model.ReviewRecord, error) {
+	if id == "missing" {
+		return model.ReviewRecord{}, model.ErrReviewNotFound
+	}
+	return model.ReviewRecord{
+		ID:        id,
+		CreatedAt: time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC),
+		Status:    model.ReviewStatusFailed,
+		Error:     "内容为空",
+		Input:     "  ",
+		Crids:     []string{},
+		Adomains:  []string{},
+		Labels:    []model.ReviewLabelStat{},
+	}, nil
 }
 
 func reviewImage(t *testing.T) []byte {
@@ -245,6 +290,169 @@ func TestReviewErrors(t *testing.T) {
 				t.Fatalf("result=%v", result)
 			}
 		})
+	}
+}
+
+// TestReviewPersistsEachInput 验证每次 ADM 输入都会保存一条记录，成功、告警和失败各一条。
+func TestReviewPersistsEachInput(t *testing.T) {
+	photo := reviewImage(t)
+	imageServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(photo)
+	}))
+	defer imageServer.Close()
+	hub := fakeReviewHub(t)
+	defer hub.Close()
+	client := &jev.Client{BaseURL: hub.URL, Model: "fake-jev", APIKey: "test", HTTP: hub.Client()}
+
+	t.Run("success", func(t *testing.T) {
+		store := &memoryReviewStore{}
+		router := reviewRouterWithStore(t, client, &fetch.Fetcher{AllowHost: func(string) error { return nil }}, store)
+		body := reviewRequestBody(t, imageServer.URL)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/review", strings.NewReader(body)))
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body)
+		}
+		var response struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		var request struct {
+			Input string `json:"input"`
+		}
+		if err := json.Unmarshal([]byte(body), &request); err != nil {
+			t.Fatal(err)
+		}
+		if len(store.records) != 1 || response.ID != "rec-1" {
+			t.Fatalf("records=%d id=%s", len(store.records), response.ID)
+		}
+		saved := store.records[0]
+		if saved.Status != model.ReviewStatusSuccess || saved.Input != request.Input || saved.Result == nil || saved.Error != "" {
+			t.Fatalf("saved=%+v", saved)
+		}
+		if len(saved.Crids) != 1 || saved.Crids[0] != "review-1" || len(saved.Adomains) != 1 || saved.Adomains[0] != "example.com" {
+			t.Fatalf("crids=%v adomains=%v", saved.Crids, saved.Adomains)
+		}
+		if saved.CreativeCount != 1 || saved.ScoredCount != 10 || saved.UnsecuredStatus != "HIT" {
+			t.Fatalf("creative=%d scored=%d unsecured=%s", saved.CreativeCount, saved.ScoredCount, saved.UnsecuredStatus)
+		}
+	})
+
+	t.Run("warning", func(t *testing.T) {
+		store := &memoryReviewStore{}
+		router := reviewRouterWithStore(t, &jev.Client{}, nil, store)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/review", strings.NewReader(`{"input":"<div>hello</div>"}`)))
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body)
+		}
+		if len(store.records) != 1 {
+			t.Fatalf("records=%d", len(store.records))
+		}
+		saved := store.records[0]
+		if saved.Status != model.ReviewStatusWarning || saved.Input != "<div>hello</div>" || saved.Result == nil || !strings.Contains(saved.ReviewError, "没有可送审的主体图片") {
+			t.Fatalf("saved=%+v", saved)
+		}
+	})
+
+	t.Run("failed", func(t *testing.T) {
+		store := &memoryReviewStore{}
+		router := reviewRouterWithStore(t, &jev.Client{}, nil, store)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/review", strings.NewReader(`{"input":"  "}`)))
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body)
+		}
+		var response map[string]string
+		if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response["error"] != "内容为空" || response["id"] != "rec-1" || len(response) != 2 {
+			t.Fatalf("response=%v", response)
+		}
+		if len(store.records) != 1 {
+			t.Fatalf("records=%d", len(store.records))
+		}
+		saved := store.records[0]
+		if saved.Status != model.ReviewStatusFailed || saved.Input != "  " || saved.Error != "内容为空" || saved.Result != nil {
+			t.Fatalf("saved=%+v", saved)
+		}
+	})
+}
+
+// TestReviewInvalidJSONSkipsRecord 验证非法 JSON 没有 ADM 输入，因此不写审核记录。
+func TestReviewInvalidJSONSkipsRecord(t *testing.T) {
+	store := &memoryReviewStore{}
+	router := reviewRouterWithStore(t, &jev.Client{}, nil, store)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/review", strings.NewReader(`{`)))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body)
+	}
+	var response map[string]string
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(store.records) != 0 || len(response) != 1 || response["error"] != "请求体不是 JSON" {
+		t.Fatalf("records=%d response=%v", len(store.records), response)
+	}
+}
+
+// TestReviewReportQuery 验证报表按上海自然日筛选，超范围和非法状态不会查询。
+func TestReviewReportQuery(t *testing.T) {
+	store := &memoryReviewStore{}
+	router := reviewRouterWithStore(t, &jev.Client{}, nil, store)
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/review/records", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body)
+	}
+	if len(store.queries) != 1 || store.queries[0].To.Sub(store.queries[0].From) != 7*24*time.Hour {
+		t.Fatalf("query=%+v", store.queries)
+	}
+	if store.queries[0].Page != 1 || store.queries[0].PageSize != 20 || store.queries[0].Status != "" {
+		t.Fatalf("query=%+v", store.queries[0])
+	}
+
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/review/records?from=2026-01-01&to=2026-04-01", nil))
+	if recorder.Code != http.StatusBadRequest || !strings.Contains(recorder.Body.String(), "查询跨度不能超过 90 天") || len(store.queries) != 1 {
+		t.Fatalf("status=%d body=%s queries=%d", recorder.Code, recorder.Body, len(store.queries))
+	}
+
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/review/records?status=unknown", nil))
+	if recorder.Code != http.StatusBadRequest || !strings.Contains(recorder.Body.String(), "状态无效") || len(store.queries) != 1 {
+		t.Fatalf("status=%d body=%s queries=%d", recorder.Code, recorder.Body, len(store.queries))
+	}
+
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/review/records?from=2026-01-01&to=2026-03-31&status=success&q=%20cr-1%20&page=2&pageSize=50", nil))
+	if recorder.Code != http.StatusOK || len(store.queries) != 2 {
+		t.Fatalf("status=%d body=%s queries=%d", recorder.Code, recorder.Body, len(store.queries))
+	}
+	query := store.queries[1]
+	if query.Status != model.ReviewStatusSuccess || query.Keyword != "cr-1" || query.Page != 2 || query.PageSize != 50 {
+		t.Fatalf("query=%+v", query)
+	}
+	if query.From.Format("2006-01-02") != "2026-01-01" || query.To.Format("2006-01-02") != "2026-04-01" {
+		t.Fatalf("from=%s to=%s", query.From, query.To)
+	}
+
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/review/records/missing", nil))
+	if recorder.Code != http.StatusNotFound || !strings.Contains(recorder.Body.String(), "审核记录不存在") {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body)
+	}
+
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/review/records/rec-9", nil))
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"input":"  "`) {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body)
 	}
 }
 

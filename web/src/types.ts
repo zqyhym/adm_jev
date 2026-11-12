@@ -73,6 +73,7 @@ export interface LabelReview {
 }
 
 export interface ReviewResult {
+  id?: string;
   bids: ReviewBid[];
   urls: UrlReport[];
   unsecured: UnsecuredVerdict;
@@ -86,4 +87,55 @@ export interface ReviewSnapshot {
   input: string;
   data: ReviewResult;
   elapsedMs: number;
+}
+
+export interface ReviewLabelStat {
+  label: string;
+  status: string;
+  noul: number | null;
+}
+
+export interface ReviewRecord {
+  id: string;
+  createdAt: string;
+  elapsedMs: number;
+  input?: string;
+  status: string;
+  error: string;
+  reviewError: string;
+  model: string;
+  unsecuredStatus: string;
+  crids: string[];
+  adomains: string[];
+  bidCount: number;
+  creativeCount: number;
+  scoredCount: number;
+  labels: ReviewLabelStat[];
+  result?: ReviewResult | null;
+}
+
+export interface ReviewLabelCount {
+  label: string;
+  count: number;
+}
+
+export interface ReviewReport {
+  total: number;
+  success: number;
+  warning: number;
+  failed: number;
+  hit: number;
+  labels: ReviewLabelCount[];
+  records: ReviewRecord[];
+  page: number;
+  pageSize: number;
+}
+
+export interface ReviewReportQuery {
+  from: string;
+  to: string;
+  status: string;
+  keyword: string;
+  page: number;
+  pageSize: number;
 }

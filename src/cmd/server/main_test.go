@@ -23,7 +23,7 @@ func TestStaticHosting(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "assets", "app.js"), []byte("console.log('local asset')"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	router, err := newHTTPHandler(false, "", directory)
+	router, err := newHTTPHandler(false, "", directory, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestDevelopmentProxy(t *testing.T) {
 		_, _ = fmt.Fprint(w, "vite: "+r.URL.RequestURI())
 	}))
 	defer upstream.Close()
-	router, err := newHTTPHandler(true, upstream.URL, t.TempDir())
+	router, err := newHTTPHandler(true, upstream.URL, t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestDevelopmentProxy(t *testing.T) {
 
 // TestInvalidProxyAddress 验证非法代理地址无法创建服务。
 func TestInvalidProxyAddress(t *testing.T) {
-	if _, err := newHTTPHandler(true, "://invalid", t.TempDir()); err == nil {
+	if _, err := newHTTPHandler(true, "://invalid", t.TempDir(), nil); err == nil {
 		t.Fatal("expected invalid proxy address to fail")
 	}
 }

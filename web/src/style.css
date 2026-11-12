@@ -2368,3 +2368,67 @@ button {
     margin-left: 0;
   }
 }
+
+.report-body {
+  display: grid;
+  gap: 16px;
+  padding: 16px 22px 22px;
+}
+
+.report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-range {
+  width: 280px;
+  max-width: 100%;
+}
+
+.report-status {
+  width: 140px;
+}
+
+.report-keyword {
+  width: 220px;
+  max-width: 100%;
+}
+
+.report-section-title {
+  margin-bottom: 8px;
+  color: #294a58;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.report-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.report-drawer {
+  min-height: 160px;
+}
+
+.report-detail-alert {
+  margin-top: 12px;
+}
+
+.report-drawer-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.report-drawer-section h3 {
+  color: #294a58;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.report-panel .review-table .el-table__row {
+  cursor: pointer;
+}

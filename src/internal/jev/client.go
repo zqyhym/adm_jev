@@ -25,9 +25,9 @@ const (
 	imageHeader    = "TypeSafe-Danger-Zone-Images"
 
 	// 上游图片宽高和总像素的闭区间。超限会被整单拒绝。
-	minImageSide  = 280
+	minImageSide  = 256
 	maxImageSide  = 1568
-	minImagePixel = 280 * 280
+	minImagePixel = 256 * 256
 	maxImagePixel = 1568 * 1568
 
 	StatusAnswered = "ANSWERED"

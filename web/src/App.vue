@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { DocumentChecked, View as ViewIcon } from "@element-plus/icons-vue";
+import { DataAnalysis, DocumentChecked, View as ViewIcon } from "@element-plus/icons-vue";
 import PreviewView from "./views/PreviewView.vue";
+import ReportView from "./views/ReportView.vue";
 import ReviewView from "./views/ReviewView.vue";
 
-type ViewId = "preview" | "review";
+type ViewId = "preview" | "review" | "report";
 
 const initial = window.location.hash.replace(/^#\/?/, "");
-const activeView = ref<ViewId>(initial === "review" ? "review" : "preview");
+const activeView = ref<ViewId>(initial === "review" || initial === "report" ? initial : "preview");
 const viewMeta: Record<ViewId, { title: string; description: string; scope: [string, string] }> = {
   preview: {
     title: "从原始内容，到创意画面。",
@@ -17,13 +18,18 @@ const viewMeta: Record<ViewId, { title: string; description: string; scope: [str
   review: {
     title: "从素材下载，到审核结果。",
     description: "下载创意图片，查看 JEV 十类标签与 URL 协议结论。",
-    scope: ["自动审核", "不落库 · 仅当前结果"],
+    scope: ["自动审核", "结果写入审核记录"],
+  },
+  report: {
+    title: "从每次提交，到审核记录。",
+    description: "按时间、状态和创意查看已落库的审核结果。",
+    scope: ["每次输入一条记录", "含失败与告警"],
   },
 };
 const activeMeta = computed(() => viewMeta[activeView.value]);
 
 function selectView(index: string): void {
-  const next: ViewId = index === "review" ? "review" : "preview";
+  const next: ViewId = index === "review" || index === "report" ? index : "preview";
   activeView.value = next;
   history.replaceState(null, "", `#/${next}`);
 }
@@ -64,6 +70,15 @@ function selectView(index: string): void {
               </span>
             </template>
           </el-menu-item>
+          <el-menu-item index="report">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>
+              <span class="nav-copy">
+                <strong>审核报表</strong>
+                <small>查看已落库的审核记录</small>
+              </span>
+            </template>
+          </el-menu-item>
         </el-menu>
       </nav>
 
@@ -87,6 +102,7 @@ function selectView(index: string): void {
       <div class="console-scroll">
         <PreviewView v-show="activeView === 'preview'" />
         <ReviewView v-show="activeView === 'review'" />
+        <ReportView v-show="activeView === 'report'" />
       </div>
     </main>
   </div>

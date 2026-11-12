@@ -1,3 +1,4 @@
+// 用纯规则判定第 11 类标签 "Unsecured Request"（创意资源是否用了不安全的 HTTP 协议）
 package asset
 
 import (

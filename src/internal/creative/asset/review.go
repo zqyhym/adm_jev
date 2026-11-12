@@ -50,6 +50,7 @@ var visualLabels = []visualLabel{
 func Reviews(bids []model.BidSource, files map[string][]byte) []jev.Request {
 	var requests []jev.Request
 	for _, bid := range bids {
+		//是否有文案
 		var texts []string
 		for _, asset := range bid.Assets {
 			if asset.Kind == "text" && asset.Role == "creative" {
@@ -62,10 +63,13 @@ func Reviews(bids []model.BidSource, files map[string][]byte) []jev.Request {
 				continue
 			}
 			ref := "asset-" + strings.NewReplacer("[", "", "]", "", "#", "-").Replace(asset.SourceID)
+			//请求中的每个问题（question）都基于同一个 state。
 			state := map[string]any{"creative": ref, "sourceId": asset.SourceID}
+			//加入文案
 			if len(texts) > 0 {
 				state["copy"] = strings.Join(texts, "\n")
 			}
+			//加入10个素材违规标签问题 noul
 			questions := map[string]jev.Question{}
 			for _, label := range visualLabels {
 				questions[label.Name] = jev.Question{
@@ -74,6 +78,8 @@ func Reviews(bids []model.BidSource, files map[string][]byte) []jev.Request {
 					Criteria:     map[string]string{"true": label.Hit, "false": label.Exclude},
 				}
 			}
+
+			//封装为jev标准请求
 			requests = append(requests, jev.Request{
 				State:             state,
 				Questions:         questions,
@@ -109,6 +115,8 @@ func Submit(ctx context.Context, client *jev.Client, bids []model.BidSource, fil
 	}
 	for _, request := range requests {
 		sourceID, _ := request.State.(map[string]any)["sourceId"].(string)
+
+		//发送到jev审核
 		result, err := client.Decide(ctx, request)
 		if result == nil {
 			labels = append(labels, unknownLabels(sourceID)...)

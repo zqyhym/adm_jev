@@ -73,8 +73,9 @@ function isLabelReview(value: unknown): value is LabelReview {
     && isNullableNumber(value.probability);
 }
 
-function isReviewResult(value: unknown): value is ReviewResult {
+export function isReviewResult(value: unknown): value is ReviewResult {
   if (!isObject(value)) return false;
+  if (value.id !== undefined && !isString(value.id)) return false;
   return Array.isArray(value.bids)
     && value.bids.every(isReviewBid)
     && Array.isArray(value.urls)
