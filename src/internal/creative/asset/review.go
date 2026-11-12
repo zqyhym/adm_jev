@@ -10,6 +10,42 @@ import (
 	"adm_jev/internal/material/model"
 )
 
+// LabelResult 是一张图片上的一个视觉标签。Probability 在本阶段保持为空。
+type LabelResult struct {
+	Label       string
+	SourceID    string
+	Status      string
+	Noul        *float64
+	Probability *float64
+}
+
+const (
+	StatusScored  = "SCORED"
+	StatusUnknown = "UNKNOWN"
+	StatusHit     = "HIT"
+	StatusNotHit  = "NOT_HIT"
+)
+
+type visualLabel struct {
+	Name    string
+	Hit     string
+	Exclude string
+}
+
+// 素材违规标签
+var visualLabels = []visualLabel{
+	{"Dating", "约会、相亲、征友、婚恋、匹配服务", "情侣或婚礼内容本身不是约会服务"},
+	{"Gambling", "赌场、下注、彩票、竞猜、赢钱号召", "普通游戏和无赢钱承诺的虚拟金币"},
+	{"Nudity", "可见裸体，或裸露胸部、臀部、生殖器", "普通暴露服装、泳装本身"},
+	{"Sexually Suggestive", "未裸体，但姿势、服装、镜头或文案有明显性暗示", "普通泳装、健身且无性暗示"},
+	{"Marijuana", "明确推广大麻、THC、相关药房、吸食或制品", "只有叶子图案、没有相关文案或符号"},
+	{"Adult Products", "性玩具、情趣用品", "普通药品"},
+	{"Adult Entertainment", "成人影像、色情站点、色情直播或陪聊", "只销售成人用品、没有成人内容或陪聊"},
+	{"Profane Language", "文案或画面文字含脏话、侮辱性粗口", "有性暗示但没有脏话"},
+	{"Religion Spirituality", "宗教、信仰、灵修、占卜、塔罗，或寺庙、教堂相关传播和劝募", "文化符号或建筑偶然出现、没有信仰号召"},
+	{"Violence", "流血、伤口、殴打、枪击、刀刺、爆炸伤人或尸体", "单独的枪械图标、普通体育对抗"},
+}
+
 // Reviews 为每张已取得的主体图片组装一条决策请求。没有可送审图片时返回空。
 func Reviews(bids []model.BidSource, files map[string][]byte) []jev.Request {
 	var requests []jev.Request
@@ -47,41 +83,6 @@ func Reviews(bids []model.BidSource, files map[string][]byte) []jev.Request {
 		}
 	}
 	return requests
-}
-
-// LabelResult 是一张图片上的一个视觉标签。Probability 在本阶段保持为空。
-type LabelResult struct {
-	Label       string
-	SourceID    string
-	Status      string
-	Noul        *float64
-	Probability *float64
-}
-
-const (
-	StatusScored  = "SCORED"
-	StatusUnknown = "UNKNOWN"
-	StatusHit     = "HIT"
-	StatusNotHit  = "NOT_HIT"
-)
-
-type visualLabel struct {
-	Name    string
-	Hit     string
-	Exclude string
-}
-
-var visualLabels = []visualLabel{
-	{"Dating", "约会、相亲、征友、婚恋、匹配服务", "情侣或婚礼内容本身不是约会服务"},
-	{"Gambling", "赌场、下注、彩票、竞猜、赢钱号召", "普通游戏和无赢钱承诺的虚拟金币"},
-	{"Nudity", "可见裸体，或裸露胸部、臀部、生殖器", "普通暴露服装、泳装本身"},
-	{"Sexually Suggestive", "未裸体，但姿势、服装、镜头或文案有明显性暗示", "普通泳装、健身且无性暗示"},
-	{"Marijuana", "明确推广大麻、THC、相关药房、吸食或制品", "只有叶子图案、没有相关文案或符号"},
-	{"Adult Products", "性玩具、情趣用品", "普通药品"},
-	{"Adult Entertainment", "成人影像、色情站点、色情直播或陪聊", "只销售成人用品、没有成人内容或陪聊"},
-	{"Profane Language", "文案或画面文字含脏话、侮辱性粗口", "有性暗示但没有脏话"},
-	{"Religion Spirituality", "宗教、信仰、灵修、占卜、塔罗，或寺庙、教堂相关传播和劝募", "文化符号或建筑偶然出现、没有信仰号召"},
-	{"Violence", "流血、伤口、殴打、枪击、刀刺、爆炸伤人或尸体", "单独的枪械图标、普通体育对抗"},
 }
 
 // Submit 在有主体图片时调用 Hub，并按来源返回 10 类标签。没有可送审图片时不发起请求，标签为 UNKNOWN。
