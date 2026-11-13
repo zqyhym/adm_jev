@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { DocumentAdd, Search } from "@element-plus/icons-vue";
 import type { ReviewRecord } from "../types";
+import { reasonText, recordReasons } from "../reviewReasons";
 import { useReviewReport } from "../useReviewReport";
 
 const statusLabels: Record<string, string> = { success: "成功", warning: "告警", failed: "失败" };
@@ -42,6 +43,7 @@ const metrics = computed(() => {
   ];
 });
 const records = computed(() => report.value?.records ?? []);
+const reasons = computed(() => report.value?.reasons ?? []);
 const notice = computed(() => formError.value || error.value);
 
 function formatTime(value: string): string {
@@ -52,6 +54,11 @@ function formatTime(value: string): string {
 
 function joinValues(values: readonly string[]): string {
   return values.length ? values.join("、") : "—";
+}
+
+function rowReasonText(row: ReviewRecord): string {
+  const codes = recordReasons(row.labels);
+  return codes.length ? codes.map(reasonText).join("、") : "—";
 }
 
 function reload(): void {
@@ -133,6 +140,15 @@ onMounted(reload);
           </div>
         </div>
 
+        <div v-if="reasons.length">
+          <h3 class="report-section-title">UNKNOWN 归因</h3>
+          <div class="report-reasons">
+            <el-tag v-for="item in reasons" :key="item.reason" size="small" type="info" effect="plain">
+              {{ reasonText(item.reason) }} · {{ item.count }}
+            </el-tag>
+          </div>
+        </div>
+
         <div>
           <h3 class="report-section-title">审核记录</h3>
           <el-table
@@ -158,6 +174,9 @@ onMounted(reload);
             </el-table-column>
             <el-table-column label="协议" width="110">
               <template #default="{ row }">{{ row.unsecuredStatus || "—" }}</template>
+            </el-table-column>
+            <el-table-column label="未定原因" min-width="160" show-overflow-tooltip>
+              <template #default="{ row }">{{ rowReasonText(row) }}</template>
             </el-table-column>
             <el-table-column label="说明" min-width="180" show-overflow-tooltip>
               <template #default="{ row }">{{ row.error || row.reviewError || "—" }}</template>
@@ -238,6 +257,9 @@ onMounted(reload);
                 <el-table-column prop="label" label="标签" min-width="160" />
                 <el-table-column prop="sourceId" label="来源" min-width="140" show-overflow-tooltip />
                 <el-table-column prop="status" label="状态" width="100" />
+                <el-table-column label="原因" min-width="150" show-overflow-tooltip>
+                  <template #default="{ row }">{{ reasonText(row.reason) }}</template>
+                </el-table-column>
                 <el-table-column label="noul" width="90">
                   <template #default="{ row }">{{ row.noul === null ? "—" : row.noul.toFixed(3) }}</template>
                 </el-table-column>

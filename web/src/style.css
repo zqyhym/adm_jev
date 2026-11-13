@@ -2403,6 +2403,13 @@ button {
   font-weight: 650;
 }
 
+.report-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
 .report-pagination {
   display: flex;
   justify-content: flex-end;

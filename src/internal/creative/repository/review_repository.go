@@ -138,10 +138,23 @@ func (r *ReviewRepository) List(ctx context.Context, query model.ReviewReportQue
 				}}},
 				bson.D{{Key: "$sort", Value: bson.D{{Key: "count", Value: -1}, {Key: "_id", Value: 1}}}},
 			}},
+			{Key: "reasons", Value: bson.A{
+				bson.D{{Key: "$unwind", Value: "$labels"}},
+				bson.D{{Key: "$match", Value: bson.D{
+					{Key: "labels.status", Value: "UNKNOWN"},
+					{Key: "labels.reason", Value: bson.D{{Key: "$nin", Value: bson.A{"", nil}}}},
+				}}},
+				bson.D{{Key: "$group", Value: bson.D{
+					{Key: "_id", Value: "$labels.reason"},
+					{Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}},
+				}}},
+				bson.D{{Key: "$sort", Value: bson.D{{Key: "count", Value: -1}, {Key: "_id", Value: 1}}}},
+			}},
 		}}},
 	})
 	report := model.ReviewReport{
 		Labels:   []model.ReviewLabelCount{},
+		Reasons:  []model.ReviewReasonCount{},
 		Records:  []model.ReviewRecord{},
 		Page:     page,
 		PageSize: pageSize,
@@ -177,6 +190,9 @@ func (r *ReviewRepository) List(ctx context.Context, query model.ReviewReportQue
 	}
 	for _, label := range facet.Labels {
 		report.Labels = append(report.Labels, model.ReviewLabelCount{Label: label.Label, Count: label.Count})
+	}
+	for _, reason := range facet.Reasons {
+		report.Reasons = append(report.Reasons, model.ReviewReasonCount{Reason: reason.Reason, Count: reason.Count})
 	}
 	for _, doc := range facet.Records {
 		report.Records = append(report.Records, documentRecord(doc, false))
@@ -229,14 +245,20 @@ type reviewLabelGroup struct {
 	Count int    `bson:"count"`
 }
 
+type reviewReasonGroup struct {
+	Reason string `bson:"_id"`
+	Count  int    `bson:"count"`
+}
+
 type reviewFacet struct {
-	Records []reviewDocument   `bson:"records"`
-	Total   []reviewCount      `bson:"total"`
-	Success []reviewCount      `bson:"success"`
-	Warning []reviewCount      `bson:"warning"`
-	Failed  []reviewCount      `bson:"failed"`
-	Hit     []reviewCount      `bson:"hit"`
-	Labels  []reviewLabelGroup `bson:"labels"`
+	Records []reviewDocument    `bson:"records"`
+	Total   []reviewCount       `bson:"total"`
+	Success []reviewCount       `bson:"success"`
+	Warning []reviewCount       `bson:"warning"`
+	Failed  []reviewCount       `bson:"failed"`
+	Hit     []reviewCount       `bson:"hit"`
+	Labels  []reviewLabelGroup  `bson:"labels"`
+	Reasons []reviewReasonGroup `bson:"reasons"`
 }
 
 func documentRecord(doc reviewDocument, withBody bool) model.ReviewRecord {

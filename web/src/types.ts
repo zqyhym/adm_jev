@@ -68,6 +68,7 @@ export interface LabelReview {
   label: string;
   sourceId: string;
   status: string;
+  reason?: string;
   noul: number | null;
   probability: number | null;
 }
@@ -92,6 +93,7 @@ export interface ReviewSnapshot {
 export interface ReviewLabelStat {
   label: string;
   status: string;
+  reason?: string;
   noul: number | null;
 }
 
@@ -119,6 +121,11 @@ export interface ReviewLabelCount {
   count: number;
 }
 
+export interface ReviewReasonCount {
+  reason: string;
+  count: number;
+}
+
 export interface ReviewReport {
   total: number;
   success: number;
@@ -126,6 +133,7 @@ export interface ReviewReport {
   failed: number;
   hit: number;
   labels: ReviewLabelCount[];
+  reasons: ReviewReasonCount[];
   records: ReviewRecord[];
   page: number;
   pageSize: number;

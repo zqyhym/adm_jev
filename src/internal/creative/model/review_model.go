@@ -43,11 +43,12 @@ type UnsecuredVerdict struct {
 	Notices  []URLReport `json:"notices"`
 }
 
-// LabelReview 是一张图片上的一个视觉标签分数。
+// LabelReview 是一张图片上的一个视觉标签分数。Reason 只在 UNKNOWN 时非空。
 type LabelReview struct {
 	Label       string   `json:"label"`
 	SourceID    string   `json:"sourceId"`
 	Status      string   `json:"status"`
+	Reason      string   `json:"reason,omitempty"`
 	Noul        *float64 `json:"noul"`
 	Probability *float64 `json:"probability"`
 }
@@ -56,6 +57,7 @@ type LabelReview struct {
 type ReviewLabelStat struct {
 	Label  string   `json:"label" bson:"label"`
 	Status string   `json:"status" bson:"status"`
+	Reason string   `json:"reason,omitempty" bson:"reason,omitempty"`
 	Noul   *float64 `json:"noul" bson:"noul"`
 }
 
@@ -95,15 +97,22 @@ type ReviewLabelCount struct {
 	Count int    `json:"count"`
 }
 
+// ReviewReasonCount 是当前筛选下某个 UNKNOWN 归因出现的标签行数。
+type ReviewReasonCount struct {
+	Reason string `json:"reason"`
+	Count  int    `json:"count"`
+}
+
 // ReviewReport 是一页审核记录和当前筛选下的汇总。
 type ReviewReport struct {
-	Total    int                `json:"total"`
-	Success  int                `json:"success"`
-	Warning  int                `json:"warning"`
-	Failed   int                `json:"failed"`
-	Hit      int                `json:"hit"`
-	Labels   []ReviewLabelCount `json:"labels"`
-	Records  []ReviewRecord     `json:"records"`
-	Page     int                `json:"page"`
-	PageSize int                `json:"pageSize"`
+	Total    int                 `json:"total"`
+	Success  int                 `json:"success"`
+	Warning  int                 `json:"warning"`
+	Failed   int                 `json:"failed"`
+	Hit      int                 `json:"hit"`
+	Labels   []ReviewLabelCount  `json:"labels"`
+	Reasons  []ReviewReasonCount `json:"reasons"`
+	Records  []ReviewRecord      `json:"records"`
+	Page     int                 `json:"page"`
+	PageSize int                 `json:"pageSize"`
 }

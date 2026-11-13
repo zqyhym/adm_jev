@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { Delete, DocumentAdd, Loading, Picture, Search } from "@element-plus/icons-vue";
 import { sampleReviewInput } from "../sample";
+import { reasonText } from "../reviewReasons";
 import { useReview } from "../useReview";
 import type { LabelReview, ReviewAsset, UnsecuredVerdict, UrlReport } from "../types";
 
@@ -436,7 +437,7 @@ function safeImageUrl(raw: string): string {
                       <div v-for="label in selectedLabels" :key="label.label" class="label-row">
                         <div class="label-head">
                           <span>{{ label.label }}</span>
-                          <el-tag size="small" :type="label.status === 'SCORED' ? 'success' : 'info'" effect="plain">{{ label.status === "SCORED" ? "已评分" : "未返回" }}</el-tag>
+                          <el-tag size="small" :type="label.status === 'SCORED' ? 'success' : 'info'" effect="plain">{{ label.status === "SCORED" ? "已评分" : (label.reason ? reasonText(label.reason) : "未返回") }}</el-tag>
                           <strong>{{ label.noul === null ? "—" : label.noul.toFixed(3) }}</strong>
                         </div>
                         <el-progress v-if="label.noul !== null" :percentage="Math.round(label.noul * 100)" :show-text="false" :stroke-width="6" />

@@ -74,7 +74,7 @@ func TestReviewRepositoryRoundTrip(t *testing.T) {
 		BidCount:        1,
 		CreativeCount:   1,
 		ScoredCount:     1,
-		Labels:          []model.ReviewLabelStat{{Label: "Nudity", Status: "SCORED", Noul: &noul}, {Label: "Gambling", Status: "UNKNOWN"}},
+		Labels:          []model.ReviewLabelStat{{Label: "Nudity", Status: "SCORED", Noul: &noul}, {Label: "Gambling", Status: "UNKNOWN", Reason: "IMAGE_SIZE"}, {Label: "Violence", Status: "UNKNOWN"}},
 		Result:          successResult,
 	})
 	if err != nil {
@@ -90,7 +90,7 @@ func TestReviewRepositoryRoundTrip(t *testing.T) {
 		UnsecuredStatus: "HIT",
 		Crids:           []string{"cr-2"},
 		Adomains:        []string{"other.example"},
-		Labels:          []model.ReviewLabelStat{{Label: "Gambling", Status: "SCORED", Noul: &noul}},
+		Labels:          []model.ReviewLabelStat{{Label: "Gambling", Status: "SCORED", Noul: &noul}, {Label: "Dating", Status: "UNKNOWN", Reason: "MISSING_ANSWER"}},
 		Result:          &model.ReviewResult{Model: "fake-jev", ReviewError: "模型超时"},
 	}); err != nil {
 		t.Fatal(err)
@@ -136,6 +136,10 @@ func TestReviewRepositoryRoundTrip(t *testing.T) {
 	if len(report.Labels) != 2 || report.Labels[0].Label != "Gambling" || report.Labels[0].Count != 1 || report.Labels[1].Label != "Nudity" || report.Labels[1].Count != 1 {
 		t.Fatalf("labels=%+v", report.Labels)
 	}
+	// 无 Reason 的历史 UNKNOWN 行不进入归因汇总。
+	if len(report.Reasons) != 2 || report.Reasons[0].Reason != "IMAGE_SIZE" || report.Reasons[0].Count != 1 || report.Reasons[1].Reason != "MISSING_ANSWER" || report.Reasons[1].Count != 1 {
+		t.Fatalf("reasons=%+v", report.Reasons)
+	}
 
 	filtered := window
 	filtered.Status = model.ReviewStatusSuccess
@@ -152,7 +156,7 @@ func TestReviewRepositoryRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.Input != "success-input" || detail.Result == nil || detail.Result.Model != "fake-jev" {
+	if detail.Input != "success-input" || detail.Result == nil || detail.Result.Model != "fake-jev" || detail.Labels[1].Reason != "IMAGE_SIZE" {
 		t.Fatalf("detail=%+v", detail)
 	}
 	failed, err := repo.Get(context.Background(), failedID)

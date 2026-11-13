@@ -77,6 +77,7 @@ func (s *ReviewService) Review(ctx context.Context, input string) (result model.
 				record.Labels = append(record.Labels, model.ReviewLabelStat{
 					Label:  label.Label,
 					Status: label.Status,
+					Reason: label.Reason,
 					Noul:   label.Noul,
 				})
 				if label.Status == asset.StatusScored {
@@ -151,6 +152,7 @@ func (s *ReviewService) Review(ctx context.Context, input string) (result model.
 			Label:       label.Label,
 			SourceID:    label.SourceID,
 			Status:      label.Status,
+			Reason:      label.Reason,
 			Noul:        label.Noul,
 			Probability: label.Probability,
 		})

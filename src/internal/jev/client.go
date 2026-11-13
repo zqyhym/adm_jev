@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -116,6 +117,9 @@ func NewFromEnv() *Client {
 	}
 }
 
+// ErrImageSize 表示宽高或总像素超出上游限制，用于和格式不支持、图片损坏区分归因。
+var ErrImageSize = errors.New("图片尺寸超出上游限制")
+
 // ValidateImage 在发请求前拒绝非 JPEG/PNG、截断图和超限图。
 func ValidateImage(data []byte) error {
 	if !jpegMagic(data) && !pngMagic(data) {
@@ -127,7 +131,7 @@ func ValidateImage(data []byte) error {
 	}
 	pixels := int64(cfg.Width) * int64(cfg.Height)
 	if cfg.Width < minImageSide || cfg.Height < minImageSide || cfg.Width > maxImageSide || cfg.Height > maxImageSide || pixels < minImagePixel || pixels > maxImagePixel {
-		return fmt.Errorf("图片尺寸 %dx%d 超出 %d 到 %d 像素的限制", cfg.Width, cfg.Height, minImageSide, maxImageSide)
+		return fmt.Errorf("%w: %dx%d 超出 %d 到 %d 像素的限制", ErrImageSize, cfg.Width, cfg.Height, minImageSide, maxImageSide)
 	}
 	return nil
 }
