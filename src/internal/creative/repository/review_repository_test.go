@@ -68,6 +68,7 @@ func TestReviewRepositoryRoundTrip(t *testing.T) {
 		Input:           "success-input",
 		Status:          model.ReviewStatusSuccess,
 		Model:           "fake-jev",
+		UpstreamModel:   "typesafe/jev-1.13-test",
 		UnsecuredStatus: "HIT",
 		Crids:           []string{"cr-1"},
 		Adomains:        []string{"example.com"},
@@ -156,7 +157,7 @@ func TestReviewRepositoryRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.Input != "success-input" || detail.Result == nil || detail.Result.Model != "fake-jev" || detail.Labels[1].Reason != "IMAGE_SIZE" {
+	if detail.Input != "success-input" || detail.Result == nil || detail.Result.Model != "fake-jev" || detail.UpstreamModel != "typesafe/jev-1.13-test" || detail.Labels[1].Reason != "IMAGE_SIZE" {
 		t.Fatalf("detail=%+v", detail)
 	}
 	failed, err := repo.Get(context.Background(), failedID)

@@ -69,6 +69,7 @@ export interface LabelReview {
   sourceId: string;
   status: string;
   reason?: string;
+  upstreamModel?: string;
   noul: number | null;
   probability: number | null;
 }
@@ -80,6 +81,7 @@ export interface ReviewResult {
   unsecured: UnsecuredVerdict;
   labels: LabelReview[];
   model: string;
+  upstreamModel?: string;
   reviewError: string;
 }
 
@@ -94,6 +96,7 @@ export interface ReviewLabelStat {
   label: string;
   status: string;
   reason?: string;
+  upstreamModel?: string;
   noul: number | null;
 }
 
@@ -106,6 +109,7 @@ export interface ReviewRecord {
   error: string;
   reviewError: string;
   model: string;
+  upstreamModel?: string;
   unsecuredStatus: string;
   crids: string[];
   adomains: string[];

@@ -56,6 +56,7 @@ func (r *ReviewRepository) Save(ctx context.Context, record model.ReviewRecord) 
 		Error:           record.Error,
 		ReviewError:     record.ReviewError,
 		Model:           record.Model,
+		UpstreamModel:   record.UpstreamModel,
 		UnsecuredStatus: record.UnsecuredStatus,
 		Crids:           record.Crids,
 		Adomains:        record.Adomains,
@@ -226,6 +227,7 @@ type reviewDocument struct {
 	Error           string                  `bson:"error"`
 	ReviewError     string                  `bson:"reviewError"`
 	Model           string                  `bson:"model"`
+	UpstreamModel   string                  `bson:"upstreamModel,omitempty"`
 	UnsecuredStatus string                  `bson:"unsecuredStatus"`
 	Crids           []string                `bson:"crids"`
 	Adomains        []string                `bson:"adomains"`
@@ -282,6 +284,7 @@ func documentRecord(doc reviewDocument, withBody bool) model.ReviewRecord {
 		Error:           doc.Error,
 		ReviewError:     doc.ReviewError,
 		Model:           doc.Model,
+		UpstreamModel:   doc.UpstreamModel,
 		UnsecuredStatus: doc.UnsecuredStatus,
 		Crids:           crids,
 		Adomains:        adomains,

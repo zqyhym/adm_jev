@@ -75,11 +75,15 @@ func (s *ReviewService) Review(ctx context.Context, input string) (result model.
 					continue
 				}
 				record.Labels = append(record.Labels, model.ReviewLabelStat{
-					Label:  label.Label,
-					Status: label.Status,
-					Reason: label.Reason,
-					Noul:   label.Noul,
+					Label:         label.Label,
+					Status:        label.Status,
+					Reason:        label.Reason,
+					UpstreamModel: label.UpstreamModel,
+					Noul:          label.Noul,
 				})
+				if record.UpstreamModel == "" {
+					record.UpstreamModel = label.UpstreamModel
+				}
 				if label.Status == asset.StatusScored {
 					record.ScoredCount++
 				}
@@ -149,13 +153,17 @@ func (s *ReviewService) Review(ctx context.Context, input string) (result model.
 	labels, reviewErr := asset.Submit(ctx, client, bids, files)
 	for _, label := range labels {
 		result.Labels = append(result.Labels, model.LabelReview{
-			Label:       label.Label,
-			SourceID:    label.SourceID,
-			Status:      label.Status,
-			Reason:      label.Reason,
-			Noul:        label.Noul,
-			Probability: label.Probability,
+			Label:         label.Label,
+			SourceID:      label.SourceID,
+			Status:        label.Status,
+			Reason:        label.Reason,
+			UpstreamModel: label.UpstreamModel,
+			Noul:          label.Noul,
+			Probability:   label.Probability,
 		})
+		if result.UpstreamModel == "" {
+			result.UpstreamModel = label.UpstreamModel
+		}
 	}
 	if reviewErr != nil {
 		result.ReviewError = reviewErr.Error()

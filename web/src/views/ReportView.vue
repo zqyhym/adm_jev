@@ -182,7 +182,7 @@ onMounted(reload);
               <template #default="{ row }">{{ row.error || row.reviewError || "—" }}</template>
             </el-table-column>
             <el-table-column label="模型" min-width="120" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.model || "—" }}</template>
+              <template #default="{ row }">{{ row.upstreamModel || row.model || "—" }}</template>
             </el-table-column>
           </el-table>
           <div class="report-pagination">
@@ -217,6 +217,7 @@ onMounted(reload);
             <el-descriptions-item label="时间">{{ formatTime(detail.createdAt) }}</el-descriptions-item>
             <el-descriptions-item label="耗时">{{ (detail.elapsedMs / 1000).toFixed(1) }} 秒</el-descriptions-item>
             <el-descriptions-item label="模型">{{ detail.model || "—" }}</el-descriptions-item>
+            <el-descriptions-item label="上游模型">{{ detail.upstreamModel || "未回显" }}</el-descriptions-item>
             <el-descriptions-item label="创意 ID">{{ joinValues(detail.crids) }}</el-descriptions-item>
             <el-descriptions-item label="广告主">{{ joinValues(detail.adomains) }}</el-descriptions-item>
             <el-descriptions-item label="协议结论">{{ detail.unsecuredStatus || "—" }}</el-descriptions-item>

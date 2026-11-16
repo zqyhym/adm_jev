@@ -12,13 +12,15 @@ import (
 
 // LabelResult 是一张图片上的一个视觉标签。Probability 在本阶段保持为空。
 // Reason 只在 Status 为 UNKNOWN 时填写，说明图片未送审或送审后未取得分数的原因。
+// UpstreamModel 是 Hub 回显的实际上游模型；模型未应答（Hub 失败、素材未送审）时为空。
 type LabelResult struct {
-	Label       string
-	SourceID    string
-	Status      string
-	Reason      string
-	Noul        *float64
-	Probability *float64
+	Label         string
+	SourceID      string
+	Status        string
+	Reason        string
+	UpstreamModel string
+	Noul          *float64
+	Probability   *float64
 }
 
 const (
@@ -164,11 +166,11 @@ func Submit(ctx context.Context, client *jev.Client, bids []model.BidSource, fil
 		for _, label := range visualLabels {
 			answer := result.Answers[label.Name]
 			if answer.Status != jev.StatusAnswered || answer.Noul == nil || *answer.Noul < 0 || *answer.Noul > 1 {
-				labels = append(labels, LabelResult{Label: label.Name, SourceID: sourceID, Status: StatusUnknown, Reason: ReasonMissingAnswer})
+				labels = append(labels, LabelResult{Label: label.Name, SourceID: sourceID, Status: StatusUnknown, Reason: ReasonMissingAnswer, UpstreamModel: result.Model})
 				continue
 			}
 			score := *answer.Noul
-			labels = append(labels, LabelResult{Label: label.Name, SourceID: sourceID, Status: StatusScored, Noul: &score})
+			labels = append(labels, LabelResult{Label: label.Name, SourceID: sourceID, Status: StatusScored, UpstreamModel: result.Model, Noul: &score})
 		}
 		var missing *jev.MissingAnswersError
 		if err != nil && !errors.As(err, &missing) {

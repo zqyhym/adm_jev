@@ -18,13 +18,14 @@ var ErrReviewNotFound = errors.New("审核记录不存在")
 
 // ReviewResult 是一次素材审核的可观察结果。
 type ReviewResult struct {
-	ID          string            `json:"id,omitempty"`
-	Bids        []model.BidSource `json:"bids"`
-	URLs        []URLReport       `json:"urls"`
-	Unsecured   UnsecuredVerdict  `json:"unsecured"`
-	Labels      []LabelReview     `json:"labels"`
-	Model       string            `json:"model"`
-	ReviewError string            `json:"reviewError"`
+	ID            string            `json:"id,omitempty"`
+	Bids          []model.BidSource `json:"bids"`
+	URLs          []URLReport       `json:"urls"`
+	Unsecured     UnsecuredVerdict  `json:"unsecured"`
+	Labels        []LabelReview     `json:"labels"`
+	Model         string            `json:"model"`
+	UpstreamModel string            `json:"upstreamModel,omitempty"`
+	ReviewError   string            `json:"reviewError"`
 }
 
 // URLReport 是一条来源地址的协议分组。
@@ -45,20 +46,22 @@ type UnsecuredVerdict struct {
 
 // LabelReview 是一张图片上的一个视觉标签分数。Reason 只在 UNKNOWN 时非空。
 type LabelReview struct {
-	Label       string   `json:"label"`
-	SourceID    string   `json:"sourceId"`
-	Status      string   `json:"status"`
-	Reason      string   `json:"reason,omitempty"`
-	Noul        *float64 `json:"noul"`
-	Probability *float64 `json:"probability"`
+	Label         string   `json:"label"`
+	SourceID      string   `json:"sourceId"`
+	Status        string   `json:"status"`
+	Reason        string   `json:"reason,omitempty"`
+	UpstreamModel string   `json:"upstreamModel,omitempty"`
+	Noul          *float64 `json:"noul"`
+	Probability   *float64 `json:"probability"`
 }
 
 // ReviewLabelStat 是写入记录、供报表汇总的一条标签。
 type ReviewLabelStat struct {
-	Label  string   `json:"label" bson:"label"`
-	Status string   `json:"status" bson:"status"`
-	Reason string   `json:"reason,omitempty" bson:"reason,omitempty"`
-	Noul   *float64 `json:"noul" bson:"noul"`
+	Label         string   `json:"label" bson:"label"`
+	Status        string   `json:"status" bson:"status"`
+	Reason        string   `json:"reason,omitempty" bson:"reason,omitempty"`
+	UpstreamModel string   `json:"upstreamModel,omitempty" bson:"upstreamModel,omitempty"`
+	Noul          *float64 `json:"noul" bson:"noul"`
 }
 
 // ReviewRecord 是一次 ADM 输入对应的审核记录。
@@ -71,6 +74,7 @@ type ReviewRecord struct {
 	Error           string            `json:"error"`
 	ReviewError     string            `json:"reviewError"`
 	Model           string            `json:"model"`
+	UpstreamModel   string            `json:"upstreamModel,omitempty"`
 	UnsecuredStatus string            `json:"unsecuredStatus"`
 	Crids           []string          `json:"crids"`
 	Adomains        []string          `json:"adomains"`

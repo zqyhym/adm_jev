@@ -61,6 +61,9 @@ func TestSubmitMissingLabelStaysUnknown(t *testing.T) {
 	}
 	scored := 0
 	for _, item := range got {
+		if item.UpstreamModel != "jev-1.13" {
+			t.Fatalf("回显模型未传播: %+v", item)
+		}
 		if item.Status == StatusNotHit || item.Status == StatusHit || item.Probability != nil {
 			t.Fatalf("%+v", item)
 		}
