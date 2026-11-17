@@ -43,7 +43,6 @@ const metrics = computed(() => {
   ];
 });
 const records = computed(() => report.value?.records ?? []);
-const reasons = computed(() => report.value?.reasons ?? []);
 const notice = computed(() => formError.value || error.value);
 
 function formatTime(value: string): string {
@@ -137,15 +136,6 @@ onMounted(reload);
             <span class="metric-label">{{ metric.label }}</span>
             <strong class="metric-value">{{ metric.value }}</strong>
             <small>{{ metric.hint }}</small>
-          </div>
-        </div>
-
-        <div v-if="reasons.length">
-          <h3 class="report-section-title">UNKNOWN 归因</h3>
-          <div class="report-reasons">
-            <el-tag v-for="item in reasons" :key="item.reason" size="small" type="info" effect="plain">
-              {{ reasonText(item.reason) }} · {{ item.count }}
-            </el-tag>
           </div>
         </div>
 

@@ -57,7 +57,6 @@ function selectView(index: string): void {
             <template #title>
               <span class="nav-copy">
                 <strong>素材预览</strong>
-                <small>解析并检查创意画面</small>
               </span>
             </template>
           </el-menu-item>
@@ -66,7 +65,6 @@ function selectView(index: string): void {
             <template #title>
               <span class="nav-copy">
                 <strong>素材审核</strong>
-                <small>下载素材并查看审核结果</small>
               </span>
             </template>
           </el-menu-item>
@@ -75,7 +73,6 @@ function selectView(index: string): void {
             <template #title>
               <span class="nav-copy">
                 <strong>审核报表</strong>
-                <small>查看已落库的审核记录</small>
               </span>
             </template>
           </el-menu-item>

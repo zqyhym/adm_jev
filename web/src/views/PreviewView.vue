@@ -170,7 +170,7 @@ async function clearWorkspace(): Promise<void> {
             <p v-if="submittedInput !== input">此错误来自上次提交的内容，当前输入尚未提交。</p>
           </el-alert>
 
-          <p class="input-notice" role="status" aria-live="polite">{{ inputNotice || "仅在点击「预览」时提交内容。" }}</p>
+          <p v-if="inputNotice" class="input-notice" role="status" aria-live="polite">{{ inputNotice }}</p>
         </form>
       </section>
 

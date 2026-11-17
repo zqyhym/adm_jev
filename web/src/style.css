@@ -1324,7 +1324,7 @@ button {
 
 .sidebar-menu .el-menu-item {
   height: auto;
-  min-height: 52px;
+  min-height: 44px;
   margin: 4px 0;
   border: 1px solid transparent;
   border-radius: 9px;
@@ -1365,16 +1365,6 @@ button {
   color: inherit;
   font-size: 13px;
   font-weight: 600;
-}
-
-.nav-copy small {
-  color: #8fa6ab;
-  font-size: 9px;
-  line-height: 1.4;
-}
-
-.sidebar-menu .el-menu-item.is-active .nav-copy small {
-  color: #b9d3d4;
 }
 
 .sidebar-footer {
@@ -2169,10 +2159,6 @@ button {
     margin-right: 6px;
   }
 
-  .nav-copy small {
-    display: none;
-  }
-
   .sidebar-footer {
     display: none;
   }
@@ -2401,13 +2387,6 @@ button {
   color: #294a58;
   font-size: 13px;
   font-weight: 650;
-}
-
-.report-reasons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
 }
 
 .report-pagination {
