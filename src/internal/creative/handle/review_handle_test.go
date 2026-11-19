@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"adm_jev/internal/creative/asset"
 	"adm_jev/internal/creative/model"
 	"adm_jev/internal/creative/service"
 	"adm_jev/internal/jev"
@@ -171,7 +172,7 @@ func TestReviewResult(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Bids) != 1 || len(result.URLs) != 1 || len(result.Labels) != 10 {
+	if len(result.Bids) != 1 || len(result.URLs) != 1 || len(result.Labels) != asset.LabelCount() {
 		t.Fatalf("unexpected counts: %s", recorder.Body)
 	}
 	if result.Bids[0].ParseStatus != "OK" {
@@ -228,7 +229,7 @@ func TestReviewWithoutHubKey(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Labels) != 10 || !strings.Contains(result.ReviewError, "AIHUB_API_KEY") {
+	if len(result.Labels) != asset.LabelCount() || !strings.Contains(result.ReviewError, "AIHUB_API_KEY") {
 		t.Fatalf("labels=%+v reviewError=%s", result.Labels, result.ReviewError)
 	}
 	for _, label := range result.Labels {
@@ -258,7 +259,7 @@ func TestReviewWithoutImage(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Bids) != 1 || len(result.Labels) != 10 || !strings.Contains(result.ReviewError, "没有可送审的主体图片") {
+	if len(result.Bids) != 1 || len(result.Labels) != asset.LabelCount() || !strings.Contains(result.ReviewError, "没有可送审的主体图片") {
 		t.Fatalf("result=%s", recorder.Body)
 	}
 }
@@ -336,7 +337,7 @@ func TestReviewPersistsEachInput(t *testing.T) {
 		if len(saved.Crids) != 1 || saved.Crids[0] != "review-1" || len(saved.Adomains) != 1 || saved.Adomains[0] != "example.com" {
 			t.Fatalf("crids=%v adomains=%v", saved.Crids, saved.Adomains)
 		}
-		if saved.CreativeCount != 1 || saved.ScoredCount != 10 || saved.UnsecuredStatus != "HIT" {
+		if saved.CreativeCount != 1 || saved.ScoredCount != asset.LabelCount() || saved.UnsecuredStatus != "HIT" {
 			t.Fatalf("creative=%d scored=%d unsecured=%s", saved.CreativeCount, saved.ScoredCount, saved.UnsecuredStatus)
 		}
 	})

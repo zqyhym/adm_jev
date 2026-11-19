@@ -17,7 +17,7 @@ const viewMeta: Record<ViewId, { title: string; description: string; scope: [str
   },
   review: {
     title: "从素材下载，到审核结果。",
-    description: "下载创意图片，查看 JEV 十类标签与 URL 协议结论。",
+    description: "下载创意图片，查看 JEV 违规标签与 URL 协议结论。",
     scope: ["自动审核", "结果写入审核记录"],
   },
   report: {

@@ -13,8 +13,8 @@ import (
 	"adm_jev/internal/material/model"
 )
 
-// TestReviewsAsksTenLabels 验证已取得图片的请求包含 10 个标签、命中排除要点和 sourceId。
-func TestReviewsAsksTenLabels(t *testing.T) {
+// TestReviewsAsksAllLabels 验证已取得图片的请求包含全部标签、命中排除要点和 sourceId。
+func TestReviewsAsksAllLabels(t *testing.T) {
 	bids := []model.BidSource{{Assets: []model.Asset{
 		{SourceID: "img-1", Kind: "image", Role: "creative", Obtained: true},
 		{SourceID: "copy-1", Kind: "text", Role: "creative", Value: "秋季促销"},

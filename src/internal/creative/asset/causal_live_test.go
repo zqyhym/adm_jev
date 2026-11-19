@@ -70,7 +70,7 @@ func TestLiveImageChoiceControl(t *testing.T) {
 		cameraChoice, probeChoice(t, client, question, camera, false))
 }
 
-// TestLiveLabelArms 对指定正例做 10问/单问/去图/换图/强文案对照，定位标签低分的原因。
+// TestLiveLabelArms 对指定正例做全量问/单问/去图/换图/强文案对照，定位标签低分的原因。
 func TestLiveLabelArms(t *testing.T) {
 	if os.Getenv("AIHUB_API_KEY") == "" {
 		t.Skip("未设置 AIHUB_API_KEY，跳过标签对照臂")
@@ -107,13 +107,13 @@ func TestLiveLabelArms(t *testing.T) {
 		if item.copy != "" {
 			withCopy = formatScore(probeScore(t, client, target.Name, question, photo, item.copy))
 		}
-		t.Logf("%s\t%s\t10问=%s\t单问=%s\t去图=%s\t换图=%s\t单问加强文案=%s",
-			item.sample, item.label, formatScore(ten), formatScore(single),
+		t.Logf("%s\t%s\t%d问=%s\t单问=%s\t去图=%s\t换图=%s\t单问加强文案=%s",
+			item.sample, item.label, len(visualLabels), formatScore(ten), formatScore(single),
 			formatScore(noImage), formatScore(swapped), withCopy)
 	}
 }
 
-// productionScore 走生产路径（10 问一次请求），用中性 sourceId 避免标签泄漏。
+// productionScore 走生产路径（全量标签一次请求），用中性 sourceId 避免标签泄漏。
 func productionScore(t *testing.T, client *jev.Client, photo, labelName string) float64 {
 	t.Helper()
 	data, err := os.ReadFile(photo)

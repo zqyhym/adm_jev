@@ -369,7 +369,7 @@ function safeImageUrl(raw: string): string {
 
             <el-tab-pane name="assets">
               <template #label>素材与标签 <span v-if="snapshot" class="tab-count">{{ assets.length }}</span></template>
-              <div class="tab-intro"><h3>素材清单与送审标签</h3><p>仅创意图片会被下载并送审；点击创意图行查看该图的十类标签。</p></div>
+              <div class="tab-intro"><h3>素材清单与送审标签</h3><p>仅创意图片会被下载并送审；点击创意图行查看该图的违规标签。</p></div>
               <div class="review-asset-layout">
                 <div class="asset-table-wrap">
                   <el-table
@@ -447,7 +447,7 @@ function safeImageUrl(raw: string): string {
                     <el-empty v-else :description="selectedAsset.obtained ? '该图片未送审或未返回标签' : '图片未取得，未送审'" :image-size="72" />
                     <p class="panel-footnote">noul 为模型原始分数，不代表命中结论；UNKNOWN 不补成未命中。</p>
                   </template>
-                  <el-empty v-else description="选择一张创意图查看十类标签" />
+                  <el-empty v-else description="选择一张创意图查看违规标签" />
                 </aside>
               </div>
             </el-tab-pane>

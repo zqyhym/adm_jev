@@ -370,16 +370,22 @@ func loadSamples(path string) ([]sample, error) {
 
 // folderLabels 把 datasets 目录名映射到生产标签名，需与 asset.visualLabels 保持一致。
 var folderLabels = map[string]string{
-	"adultent":   "Adult Entertainment",
-	"adultprod":  "Adult Products",
-	"dating":     "Dating",
-	"gambling":   "Gambling",
-	"marijuana":  "Marijuana",
-	"nudity":     "Nudity",
-	"profane":    "Profane Language",
-	"religion":   "Religion Spirituality",
-	"suggestive": "Sexually Suggestive",
-	"violence":   "Violence",
+	"adultent":    "Adult Entertainment",
+	"adultprod":   "Adult Products",
+	"dating":      "Dating",
+	"gambling":    "Gambling",
+	"marijuana":   "Marijuana",
+	"nudity":      "Nudity",
+	"profane":     "Profane Language",
+	"religion":    "Religion Spirituality",
+	"suggestive":  "Sexually Suggestive",
+	"violence":    "Violence",
+	"scam":        "Scam/Fraud",
+	"political":   "Political",
+	"cbd":         "CBD & Hemp",
+	"medical":     "Medical Polarizing",
+	"coronavirus": "Coronavirus",
+	"military":    "MILITARY VEHICLES",
 }
 
 // scanSamples 遍历 <label>_pos/_neg 目录，目录名即该标签的真值；其余标签视为未标注。
@@ -974,7 +980,7 @@ func buildReport(records []record, samples []sample, source string, repeat int, 
 	for _, rec := range records {
 		elapsed = append(elapsed, rec.ElapsedMs)
 	}
-	fmt.Fprintf(&b, "单样本端到端（含下载与一次 10 问决策）：P50 %d ms，P95 %d ms，最大 %d ms。\n\n",
+	fmt.Fprintf(&b, "单样本端到端（含下载与一次逐标签决策）：P50 %d ms，P95 %d ms，最大 %d ms。\n\n",
 		percentile(elapsed, 0.5), percentile(elapsed, 0.95), percentile(elapsed, 1))
 
 	fmt.Fprintf(&b, "## 8. 口径与局限\n\n")

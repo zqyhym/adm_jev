@@ -114,9 +114,9 @@ Unsecured Request 只看创意资源 URL 的协议，`nurl` / `burl` / `lurl` �
 
 ## 标签
 
-JEV 判断这 10 类：Dating、Gambling、Nudity、Sexually Suggestive、Marijuana、Adult Products、Adult Entertainment、Profane Language、Religion Spirituality、Violence。
+JEV 判断这 16 类：Dating、Gambling、Nudity、Sexually Suggestive、Marijuana、Adult Products、Adult Entertainment、Profane Language、Religion Spirituality、Violence、Scam/Fraud、Political、CBD & Hemp、Medical Polarizing、Coronavirus、MILITARY VEHICLES。定义见 `src/internal/creative/asset/review.go` 的 `visualLabels`。
 
-第 11 类 Unsecured Request 由 URL 规则生成，不经过模型。
+Unsecured Request 由 URL 规则生成，不经过模型。
 
 ## 离线评测
 
